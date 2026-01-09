@@ -1,32 +1,8 @@
 """
 Alpaca Trading Bot - Live Trading Integration
 
-FEATURES:
-✅ Connects to Alpaca API (paper or live trading)
-✅ Fetches real-time market data
-✅ Generates signals using trained model
-✅ Smart rebalancing (minimizes turnover)
-✅ Position tracking and monitoring
-✅ Automated daily rebalancing
-✅ Safety checks and risk management
-
-USAGE:
-    # Paper trading
-    bot = AlpacaTradingBot(
-        api_key="YOUR_KEY",
-        api_secret="YOUR_SECRET",
-        paper=True
-    )
-    
-    # Run daily rebalancing
-    bot.run_daily_rebalance()
-
-SAFETY FEATURES:
-✅ Max position size limits
-✅ Max drawdown protection
-✅ Stop loss on individual positions
-✅ Dry run mode (no actual trades)
-✅ Transaction cost tracking
+Eventually will try and connect trading strategy to Alpaca Sandbox. 
+###This code below is not finished and was an early iteration. Will update later
 """
 
 import os

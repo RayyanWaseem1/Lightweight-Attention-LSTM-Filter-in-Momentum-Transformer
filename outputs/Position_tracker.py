@@ -1,14 +1,15 @@
 """
 Position Tracking System - Database & Monitoring
+This is for Alpaca Sandbox deployment
+Again not updated, will get to it later. 
+Should track all of the portfolio positions with:
+    -entry/exit prices and times
+    -unrealized/realized P&L
+    -position age and signals
+    -trade history
+    -performance metrics
+Will get to it later
 
-Tracks all portfolio positions with:
-✅ Entry/exit prices and times
-✅ Unrealized/realized P&L
-✅ Position age and signals
-✅ Trade history
-✅ Performance metrics
-
-Uses SQLite for persistent storage
 """
 
 import sqlite3

@@ -1,6 +1,9 @@
-#Online Performance Monitoring
-#Meta layer that monitors both models' performance and selects the better one
-#Uses actual realized returns to make the adaptive/dynamic decisions
+"""
+Docstring for Models.Online_Selector
+Online Performance Monitoring for Alpaca deployment
+Meta layer that monitors both models' performance and selects the better one
+Uses actual realized returns to make the adaptive/dynamic decisions
+"""
 
 import torch
 import torch.nn as nn

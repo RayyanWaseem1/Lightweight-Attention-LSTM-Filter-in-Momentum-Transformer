@@ -1,13 +1,5 @@
 """
-LOOKAHEAD BIAS DIAGNOSTIC TOOL - FIXED VERSION
-===============================================
-
-This version properly tests YOUR actual backtest setup with lagged features.
-
-Run this script to check if your backtesting setup has lookahead bias.
-
-Usage:
-    python lookahead_bias_diagnostic_FIXED.py
+This diagnostic tool properly tests backtest setup with lagged features.
 
 This will run 5 tests to detect common sources of lookahead bias.
 """
@@ -41,7 +33,7 @@ print("="*80)
 
 def prepare_features_properly(df, lag=True):
     """
-    Prepare features the CORRECT way (matching your backtest).
+    Prepare features the CORRECT way.
     
     Args:
         df: OHLCV dataframe

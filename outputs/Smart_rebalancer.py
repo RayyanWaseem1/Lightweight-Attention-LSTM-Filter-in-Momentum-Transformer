@@ -1,15 +1,15 @@
 """
 Smart Rebalancing Engine - Minimize Turnover & Transaction Costs
 
-FEATURES:
-✅ Keeps positions with strong signals (>0.3)
-✅ Exits positions with weak signals (<0.2)
-✅ Adds new positions only if significantly stronger
-✅ Considers transaction costs in decisions
-✅ Tracks which model (vanilla/attention) used per stock
-✅ Position-aware decision making
+Features:
+    -Keeps positions with strong signals (>0.3)
+    -Exits positions with weak signals (<0.2)
+    -Adds new positions only if significantly stronger
+    -Considers transaction costs in decisions
+    -Tracks which model (vanilla/attention) used per stock
+    -Position-aware decision making
 
-REBALANCING LOGIC:
+Rebalancing logic
 1. Check current positions
 2. Evaluate each against new signals
 3. Exit if:
