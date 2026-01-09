@@ -1,0 +1,14 @@
+{
+  "batch_size": 128,
+  "dropout": 0.17657938137454257,
+  "hidden_dim": 64,
+  "learning_rate": 0.004719715360938846,
+  "lstm_dropout": 0.25423077149034057,
+  "lstm_num_layers": 2,
+  "num_attention_heads": 4,
+  "num_epochs": 15,
+  "num_transformer_layers": 2,
+  "weight_decay": 0.0005133044443592945,
+  "weight_dropout": 0.13827569123965747,
+  "weight_hidden_dim": 48
+}

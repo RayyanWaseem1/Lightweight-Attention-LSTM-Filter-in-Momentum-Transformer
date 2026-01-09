@@ -1,0 +1,101 @@
+================================================================================
+REGIME-AWARE MULTI-ASSET PORTFOLIO PERFORMANCE SUMMARY
+================================================================================
+
+PORTFOLIO COMPOSITION
+--------------------------------------------------------------------------------
+  KDP   :  16.1% ( LONG) - Vanilla model
+  CSCO  :  15.2% ( LONG) - Vanilla model
+  CMCSA :  11.5% ( LONG) - Vanilla model
+  EWZ   :  10.2% ( LONG) - Vanilla model
+  WDAY  :   9.7% (SHORT) - Vanilla model
+  NFLX  :   9.3% (SHORT) - Vanilla model
+  NTNX  :   9.3% (SHORT) - Vanilla model
+  NVDA  :   7.2% ( LONG) - Vanilla model
+  WBD   :   5.8% ( LONG) - Vanilla model
+  LYFT  :   5.5% ( LONG) - Vanilla model
+
+================================================================================
+REGIME-AWARE MODEL STATISTICS
+--------------------------------------------------------------------------------
+  Mean Attention Weight: 0.411
+  Attention Model Usage: 14.3%
+  Vanilla Model Usage:   85.7%
+  → Dynamic regime-based model switching working!
+
+================================================================================
+PREDICTION QUALITY METRICS
+--------------------------------------------------------------------------------
+  MSE:                   0.000144
+  RMSE:                  0.012017
+  MAE:                   0.009208
+  Information Coef (IC): 0.0098
+  IC p-value:            0.010267
+  Directional Accuracy:  49.61%
+  Inference Time:        208630.28 ms
+  Inference Time/sample: 3.0684 ms
+
+================================================================================
+PERFORMANCE METRICS BY COST SCENARIO
+================================================================================
+
+OPTIMISTIC (Transaction Costs: 5 bps)
+--------------------------------------------------------------------------------
+  Total Return:         212.75%
+  Annualized Return:     60.94%
+  Volatility:            31.31%
+  Sharpe Ratio:           1.947
+  Sortino Ratio:          0.030
+  Calmar Ratio:           1.603
+  Maximum Drawdown:     -38.02%
+  Win Rate:              41.26%
+  Profit Factor:           1.09
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      228.14%
+    Cost Drag:         15.39%
+    Net Return:        212.75%
+
+REALISTIC (Transaction Costs: 10 bps)
+--------------------------------------------------------------------------------
+  Total Return:         198.07%
+  Annualized Return:     58.58%
+  Volatility:            31.31%
+  Sharpe Ratio:           1.871
+  Sortino Ratio:          0.029
+  Calmar Ratio:           1.511
+  Maximum Drawdown:     -38.76%
+  Win Rate:              41.26%
+  Profit Factor:           1.09
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      228.14%
+    Cost Drag:         30.06%
+    Net Return:        198.07%
+
+PESSIMISTIC (Transaction Costs: 20 bps)
+--------------------------------------------------------------------------------
+  Total Return:         170.71%
+  Annualized Return:     53.86%
+  Volatility:            31.31%
+  Sharpe Ratio:           1.718
+  Sortino Ratio:          0.026
+  Calmar Ratio:           1.339
+  Maximum Drawdown:     -40.22%
+  Win Rate:              41.24%
+  Profit Factor:           1.08
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      228.14%
+    Cost Drag:         57.43%
+    Net Return:        170.71%
+

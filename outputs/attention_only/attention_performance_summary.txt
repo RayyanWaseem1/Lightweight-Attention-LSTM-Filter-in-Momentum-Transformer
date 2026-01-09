@@ -1,0 +1,99 @@
+================================================================================
+ATTENTION-ONLY MULTI-ASSET PORTFOLIO PERFORMANCE SUMMARY
+================================================================================
+
+PORTFOLIO COMPOSITION
+--------------------------------------------------------------------------------
+  CSCO  :  14.6% ( LONG) - Attention model
+  KDP   :  14.0% ( LONG) - Attention model
+  CMCSA :  12.6% ( LONG) - Attention model
+  EWZ   :  10.8% ( LONG) - Attention model
+  HPQ   :  10.3% ( LONG) - Attention model
+  VALE  :   9.0% ( LONG) - Attention model
+  WDAY  :   8.2% (SHORT) - Attention model
+  NFLX  :   8.1% (SHORT) - Attention model
+  WBD   :   6.3% ( LONG) - Attention model
+  NTNX  :   6.2% (SHORT) - Attention model
+
+================================================================================
+MODEL STATISTICS
+--------------------------------------------------------------------------------
+  Model: Attention-Enhanced Transformer (no vanilla/ensemble)
+  → Using only attention model for all predictions
+
+================================================================================
+PREDICTION QUALITY METRICS
+--------------------------------------------------------------------------------
+  MSE:                   0.000109
+  RMSE:                  0.010435
+  MAE:                   0.007912
+  Information Coef (IC): 0.0097
+  IC p-value:            0.013236
+  Directional Accuracy:  49.21%
+  Inference Time:        99592.44 ms
+  Inference Time/sample: 1.5208 ms
+
+================================================================================
+PERFORMANCE METRICS BY COST SCENARIO
+================================================================================
+
+OPTIMISTIC (Transaction Costs: 5 bps)
+--------------------------------------------------------------------------------
+  Total Return:         -17.57%
+  Annualized Return:     -6.68%
+  Volatility:            23.73%
+  Sharpe Ratio:          -0.282
+  Sortino Ratio:         -0.004
+  Calmar Ratio:          -0.144
+  Maximum Drawdown:     -46.48%
+  Win Rate:              33.75%
+  Profit Factor:           0.99
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      -13.52%
+    Cost Drag:         4.06%
+    Net Return:        -17.57%
+
+REALISTIC (Transaction Costs: 10 bps)
+--------------------------------------------------------------------------------
+  Total Return:         -21.44%
+  Annualized Return:     -9.04%
+  Volatility:            23.73%
+  Sharpe Ratio:          -0.381
+  Sortino Ratio:         -0.005
+  Calmar Ratio:          -0.187
+  Maximum Drawdown:     -48.43%
+  Win Rate:              33.75%
+  Profit Factor:           0.98
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      -13.52%
+    Cost Drag:         7.92%
+    Net Return:        -21.44%
+
+PESSIMISTIC (Transaction Costs: 20 bps)
+--------------------------------------------------------------------------------
+  Total Return:         -28.65%
+  Annualized Return:    -13.76%
+  Volatility:            23.73%
+  Sharpe Ratio:          -0.579
+  Sortino Ratio:         -0.008
+  Calmar Ratio:          -0.264
+  Maximum Drawdown:     -52.16%
+  Win Rate:              33.74%
+  Profit Factor:           0.97
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      -13.52%
+    Cost Drag:         15.14%
+    Net Return:        -28.65%
+

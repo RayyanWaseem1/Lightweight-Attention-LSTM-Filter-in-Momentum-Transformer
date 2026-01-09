@@ -1,0 +1,50 @@
+{
+    "job_id": "XASE-20251127-QACGJS5DHW",
+    "files": [
+        {
+            "filename": "condition.json",
+            "size": 237223,
+            "hash": "sha256:58683717bae9f5cc4595a29654ab739aab0a1875812156179383dca1e8a3e0e5",
+            "urls": {
+                "https": "https://api.databento.com/v0/batch/download/GGQ95QHT/XASE-20251127-QACGJS5DHW/condition.json",
+                "ftp": "ftp://ftp.databento.com/GGQ95QHT/XASE-20251127-QACGJS5DHW/condition.json"
+            }
+        },
+        {
+            "filename": "metadata.json",
+            "size": 2639,
+            "hash": "sha256:81b67d01725f179ae81c2486b1c9a790689a3951fcab348c38082d56ed03da84",
+            "urls": {
+                "https": "https://api.databento.com/v0/batch/download/GGQ95QHT/XASE-20251127-QACGJS5DHW/metadata.json",
+                "ftp": "ftp://ftp.databento.com/GGQ95QHT/XASE-20251127-QACGJS5DHW/metadata.json"
+            }
+        },
+        {
+            "filename": "symbology.json",
+            "size": 18938,
+            "hash": "sha256:fe99ae823056eb1ca0324210a93cd420f2d93c757d631631faa304d001216359",
+            "urls": {
+                "https": "https://api.databento.com/v0/batch/download/GGQ95QHT/XASE-20251127-QACGJS5DHW/symbology.json",
+                "ftp": "ftp://ftp.databento.com/GGQ95QHT/XASE-20251127-QACGJS5DHW/symbology.json"
+            }
+        },
+        {
+            "filename": "symbology.csv",
+            "size": 4367946,
+            "hash": "sha256:f14d1e679aa308d656686447516de46b295decb1d751400bce6c326c4104f133",
+            "urls": {
+                "https": "https://api.databento.com/v0/batch/download/GGQ95QHT/XASE-20251127-QACGJS5DHW/symbology.csv",
+                "ftp": "ftp://ftp.databento.com/GGQ95QHT/XASE-20251127-QACGJS5DHW/symbology.csv"
+            }
+        },
+        {
+            "filename": "xase-pillar-20180501-20251126.ohlcv-1h.csv",
+            "size": 99123751,
+            "hash": "sha256:7daa1f4ba42d7979f61550ad878e99b625414e49c81dce78f1997ac0a3b86721",
+            "urls": {
+                "https": "https://api.databento.com/v0/batch/download/GGQ95QHT/XASE-20251127-QACGJS5DHW/xase-pillar-20180501-20251126.ohlcv-1h.csv",
+                "ftp": "ftp://ftp.databento.com/GGQ95QHT/XASE-20251127-QACGJS5DHW/xase-pillar-20180501-20251126.ohlcv-1h.csv"
+            }
+        }
+    ]
+}

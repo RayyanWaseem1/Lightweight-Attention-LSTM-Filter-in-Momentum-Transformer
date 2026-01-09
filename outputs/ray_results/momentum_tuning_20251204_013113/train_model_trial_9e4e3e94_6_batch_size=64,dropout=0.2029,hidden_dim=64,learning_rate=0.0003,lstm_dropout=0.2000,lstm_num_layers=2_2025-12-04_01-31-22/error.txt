@@ -1,0 +1,47 @@
+Failure # 1 (occurred at 2025-12-04_01-31-23)
+The actor died unexpectedly before finishing this task.
+	class_name: ImplicitFunc
+	actor_id: 7c68127759e2320dfeaea23801000000
+	pid: 49350
+	namespace: bdd2feb9-0dd1-4871-abc7-cb28239be477
+	ip: 127.0.0.1
+The actor is dead because its worker process has died. Worker exit type: SYSTEM_ERROR Worker exit detail: Worker exits unexpectedly. Worker exits with an exit code None. Traceback (most recent call last):
+  File "python/ray/_raylet.pyx", line 1715, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 1826, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 1722, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 1665, in ray._raylet.execute_task.function_executor
+  File "/opt/anaconda3/lib/python3.13/site-packages/ray/_private/function_manager.py", line 693, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "/opt/anaconda3/lib/python3.13/site-packages/ray/_private/function_manager.py", line 610, in temporary_actor_method
+    raise RuntimeError(
+    ...<4 lines>...
+    )
+RuntimeError: The actor with name ImplicitFunc failed to import on the worker. This may be because needed library dependencies are not installed in the worker environment:
+
+Traceback (most recent call last):
+  File "/opt/anaconda3/lib/python3.13/site-packages/ray/_private/function_manager.py", line 649, in _load_actor_class_from_gcs
+    actor_class = pickle.loads(pickled_class)
+ModuleNotFoundError: No module named 'Models'
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "python/ray/_raylet.pyx", line 2164, in ray._raylet.task_execution_handler
+  File "python/ray/_raylet.pyx", line 2023, in ray._raylet.execute_task_with_cancellation_handler
+  File "python/ray/_raylet.pyx", line 1667, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 1668, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 1917, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 896, in ray._raylet.store_task_errors
+  File "/opt/anaconda3/lib/python3.13/site-packages/ray/_private/function_manager.py", line 610, in temporary_actor_method
+    raise RuntimeError(
+    ...<4 lines>...
+    )
+RuntimeError: The actor with name ImplicitFunc failed to import on the worker. This may be because needed library dependencies are not installed in the worker environment:
+
+Traceback (most recent call last):
+  File "/opt/anaconda3/lib/python3.13/site-packages/ray/_private/function_manager.py", line 649, in _load_actor_class_from_gcs
+    actor_class = pickle.loads(pickled_class)
+ModuleNotFoundError: No module named 'Models'
+
+An unexpected internal error occurred while the worker was executing a task.

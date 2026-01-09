@@ -1,0 +1,99 @@
+================================================================================
+VANILLA-ONLY MULTI-ASSET PORTFOLIO PERFORMANCE SUMMARY
+================================================================================
+
+PORTFOLIO COMPOSITION
+--------------------------------------------------------------------------------
+  CSCO  :  18.6% ( LONG) - Vanilla model
+  KDP   :  16.6% ( LONG) - Vanilla model
+  EWZ   :  12.7% ( LONG) - Vanilla model
+  NFLX  :  10.2% (SHORT) - Vanilla model
+  CMCSA :   9.9% ( LONG) - Vanilla model
+  QCOM  :   9.5% (SHORT) - Vanilla model
+  WDAY  :   7.9% (SHORT) - Vanilla model
+  NTNX  :   6.1% (SHORT) - Vanilla model
+  WBD   :   5.0% ( LONG) - Vanilla model
+  TTD   :   3.7% (SHORT) - Vanilla model
+
+================================================================================
+MODEL STATISTICS
+--------------------------------------------------------------------------------
+  Model: Vanilla Transformer (no attention/ensemble)
+  → Using only vanilla model for all predictions
+
+================================================================================
+PREDICTION QUALITY METRICS
+--------------------------------------------------------------------------------
+  MSE:                   0.000131
+  RMSE:                  0.011461
+  MAE:                   0.008890
+  Information Coef (IC): 0.0072
+  IC p-value:            0.063781
+  Directional Accuracy:  49.19%
+  Inference Time:        95184.41 ms
+  Inference Time/sample: 1.4549 ms
+
+================================================================================
+PERFORMANCE METRICS BY COST SCENARIO
+================================================================================
+
+OPTIMISTIC (Transaction Costs: 5 bps)
+--------------------------------------------------------------------------------
+  Total Return:           3.54%
+  Annualized Return:      4.55%
+  Volatility:            23.81%
+  Sharpe Ratio:           0.191
+  Sortino Ratio:          0.003
+  Calmar Ratio:           0.102
+  Maximum Drawdown:     -44.59%
+  Win Rate:              34.19%
+  Profit Factor:           1.01
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      8.63%
+    Cost Drag:         5.09%
+    Net Return:        3.54%
+
+REALISTIC (Transaction Costs: 10 bps)
+--------------------------------------------------------------------------------
+  Total Return:          -1.32%
+  Annualized Return:      2.19%
+  Volatility:            23.81%
+  Sharpe Ratio:           0.092
+  Sortino Ratio:          0.001
+  Calmar Ratio:           0.047
+  Maximum Drawdown:     -46.36%
+  Win Rate:              34.19%
+  Profit Factor:           1.00
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      8.63%
+    Cost Drag:         9.95%
+    Net Return:        -1.32%
+
+PESSIMISTIC (Transaction Costs: 20 bps)
+--------------------------------------------------------------------------------
+  Total Return:         -10.38%
+  Annualized Return:     -2.53%
+  Volatility:            23.81%
+  Sharpe Ratio:          -0.106
+  Sortino Ratio:         -0.001
+  Calmar Ratio:          -0.051
+  Maximum Drawdown:     -49.90%
+  Win Rate:              34.18%
+  Profit Factor:           0.99
+  Number of Periods:     12,307
+
+  Rebalancing Strategy:
+    Frequency:         Weekly
+    Number of Rebalances: 48
+    Gross Return:      8.63%
+    Cost Drag:         19.01%
+    Net Return:        -10.38%
+

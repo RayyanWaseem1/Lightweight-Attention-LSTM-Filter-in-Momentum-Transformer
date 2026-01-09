@@ -1,0 +1,264 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 (.venv) (base) rayyanwaseem@Rayyans-MacBook-Pro Examples % python Backtest_complete.py\
+================================================================================\
+REGIME-AWARE MULTI-ASSET MOMENTUM TRANSFORMER\
+================================================================================\
+Dynamic model switching based on market regime\
+================================================================================\
+\
+================================================================================\
+LOADING DATA WITH COMPREHENSIVE FILTERING\
+================================================================================\
+\
+Initial: 951,231 bars, 100 symbols\
+\
+[Filter 1] Removing penny stocks (min price < $2)...\
+  Removed: 33 penny stocks\
+  Remaining: 67 symbols\
+\
+[Filter 2] Removing leveraged ETFs (3x products)...\
+  Found 8 leveraged ETFs: SOXL, SOXS, TQQQ, SQQQ, TZA, BULL, TSLL, MSTX\
+  Remaining: 59 symbols\
+\
+[Filter 3] Detecting stock splits...\
+  Found 16 symbols with stock splits\
+  Removing 18 bars with splits (keeping stocks)\
+  Blue-chip stocks with splits: AAPL, GOOGL, GOOG, AMZN, META, NVDA, TSLA, NFLX\
+  Kept all 16 symbols (99.9% of their data)\
+\
+[Filter 4] Removing extreme penny stocks (>1000% returns)...\
+  Found 1 extreme penny stocks:\
+    META: Max 1490.6%\
+  Remaining: 58 symbols\
+\
+[Filter 5] Ensuring sufficient data (\uc0\u8805 3,000 bars)...\
+  Remaining: 52 symbols\
+\
+================================================================================\
+FINAL DATASET\
+================================================================================\
+Bars:     648,790 (68.2% of original)\
+Symbols:  52 (52.0% of original)\
+Date range: 2018-05-01 to 2025-11-26\
+\
+\uc0\u10003  Blue-chip stocks kept (9): AAPL, MSFT, GOOGL, GOOG, AMZN, NVDA, TSLA, AMD, NFLX\
+\
+================================================================================\
+\
+[Step 2/8] Engineering Stock-Agnostic Features...\
+\uc0\u10003  Created features for 52 symbols\
+  Total samples: 648,738\
+  Features: 53\
+\
+ [Step 2.5/8] Computing Market Returns for Cross-Sectional Features...\
+ Computed market returns for 22365 timestamps\
+ Market return range: [-0.9492, 0.1261]\
+\
+[Step 3/8] Calculating Actual Returns...\
+\uc0\u10003  Calculated returns for 52 symbols\
+\
+[Diagnostics] Top 5 per-bar symbol returns after clipping:\
+  2021-02-11 14:00:00 MSTR: +0.0683\
+  2021-03-03 12:00:00 MSTR: +0.0683\
+  2022-05-31 15:00:00 MSTR: +0.0683\
+  2022-05-31 13:00:00 MSTR: +0.0683\
+  2024-04-22 13:00:00 MSTR: +0.0683\
+\
+[Data Split by Time Period]\
+  Training on multiple market regimes for robustness...\
+  Train: 179,274 samples (2018-05-01 to 2020-12-30)\
+         Market conditions: COVID crash, recovery, mixed volatility\
+  Val:   88,755 samples (2020-12-31 to 2021-12-30)\
+         Market conditions: 2021 bear market, high volatility decline\
+  Test:  380,709 samples (2021-12-31 to 2025-11-26)\
+         Market conditions: Recovery and bull market with corrections\
+Created dataset: 167934 sequences from 45 stocks\
+Created dataset: 76423 sequences from 48 stocks\
+\
+[Step 4/8] Training Regime-Aware Ensemble Model...\
+  Model will learn to switch between vanilla/attention based on regime\
+ Epoch 5 / 20:\
+ Val Sharpe: 0.3055\
+ Train Attention: 0.475 (0 = Vanilla, 1 = Attention)\
+ Val Attention: 0.468\
+ Epoch 10 / 20:\
+ Val Sharpe: -0.0210\
+ Train Attention: 0.462 (0 = Vanilla, 1 = Attention)\
+ Val Attention: 0.454\
+ Epoch 15 / 20:\
+ Val Sharpe: 0.0851\
+ Train Attention: 0.448 (0 = Vanilla, 1 = Attention)\
+ Val Attention: 0.445\
+ Epoch 20 / 20:\
+ Val Sharpe: -0.0842\
+ Train Attention: 0.419 (0 = Vanilla, 1 = Attention)\
+ Val Attention: 0.416\
+ Training complete\
+ Best val Sharpe: 0.3782\
+\
+ Model Usage Statistics: \
+ Mean Attention weight: 0.411\
+ Attention used: 14.3% of time\
+ Vanilla used: 85.7% of time\
+\
+[Step 5/8] Generating Regime-Aware Signals...\
+\uc0\u10003  Generated signals for 52 symbols\
+  Signal range: [-4.492, 3.378]\
+\
+  Model Usage by Stock:\
+    Attention model preferred: 0 stocks\
+    Vanilla model preferred: 52 stocks\
+    \uc0\u8594  Dynamic regime-based selection!\
+\
+[Portfolio Construction]\
+  Selected 10 positions:\
+    KDP   :  16.1% (LONG) - Vanilla model\
+    CSCO  :  15.2% (LONG) - Vanilla model\
+    CMCSA :  11.5% (LONG) - Vanilla model\
+    EWZ   :  10.2% (LONG) - Vanilla model\
+    WDAY  :   9.7% (SHORT) - Vanilla model\
+    NFLX  :   9.3% (SHORT) - Vanilla model\
+    NTNX  :   9.3% (SHORT) - Vanilla model\
+    NVDA  :   7.2% (LONG) - Vanilla model\
+    WBD   :   5.8% (LONG) - Vanilla model\
+    LYFT  :   5.5% (LONG) - Vanilla model\
+\
+[Prediction Diagnostics - BEFORE Scaling]\
+  Predictions range: [-5.480128, 4.178812]\
+  Actuals range:     [-0.042945, 0.045105]\
+  Predictions mean:  1.022830\
+  Actuals mean:      0.000080\
+  Predictions std:   1.903949\
+  Actuals std:       0.008524\
+    WARNING: Predictions and actuals are on different scales!\
+     Scale ratio: 223.37x\
+     This causes terrible R\'b2 and RMSE values\
+  \uc0\u10003   Applying scaling to fix metrics...\
+\
+[Prediction Diagnostics - AFTER Scaling]\
+  Scaled predictions range: [-0.029033, 0.014209]\
+  Actuals range:            [-0.042945, 0.045105]\
+  Scaled predictions mean:  0.000080\
+  Actuals mean:             0.000080\
+  Scaled predictions std:   0.008524\
+  Actuals std:              0.008524\
+  \uc0\u10003  Predictions now on same scale as actuals!\
+  Note: Portfolio weights used original (unscaled) predictions for ranking\
+\
+[Step 6/8] Calculating Portfolio Returns...\
+\
+[Diagnostics] Top/Bottom 5 per-bar portfolio returns after winsorization:\
+  2022-02-03 12:00:00: +0.0169\
+  2022-02-03 21:00:00: +0.0169\
+  2022-02-15 13:00:00: +0.0169\
+  2022-02-25 13:00:00: +0.0169\
+  2022-03-09 13:00:00: +0.0169\
+  2022-01-10 13:00:00: -0.0161\
+  2022-01-14 13:00:00: -0.0161\
+  2022-01-18 13:00:00: -0.0161\
+  2022-01-24 12:00:00: -0.0161\
+  2022-01-26 22:00:00: -0.0161\
+\uc0\u10003  Calculated portfolio returns for 12307 periods\
+  Return range: [-0.0161, 0.0169]\
+\
+[Step 7/7] Calculating Performance Metrics with Rebalancing...\
+  Strategy: Active rebalancing (not buy-and-hold)\
+\
+\uc0\u10003  Found 48 rebalances for monthly frequency\
+  First rebalance: 2021-12-31 12:00:00\
+  Last rebalance: 2025-11-03 12:00:00\
+\
+  OPTIMISTIC MONTHLY:\
+    Costs: 5 bps, monthly rebalance\
+    Rebalances: 48\
+    Gross Return: 228.14%\
+    Cost Drag: 15.39%\
+    Net Return: 212.75%\
+    Sharpe Ratio: 1.947\
+    Max Drawdown: -38.02%\
+\
+\uc0\u10003  Found 48 rebalances for monthly frequency\
+  First rebalance: 2021-12-31 12:00:00\
+  Last rebalance: 2025-11-03 12:00:00\
+\
+  REALISTIC MONTHLY:\
+    Costs: 10 bps, monthly rebalance\
+    Rebalances: 48\
+    Gross Return: 228.14%\
+    Cost Drag: 30.06%\
+    Net Return: 198.07%\
+    Sharpe Ratio: 1.871\
+    Max Drawdown: -38.76%\
+\
+\uc0\u10003  Found 48 rebalances for monthly frequency\
+  First rebalance: 2021-12-31 12:00:00\
+  Last rebalance: 2025-11-03 12:00:00\
+\
+  PESSIMISTIC MONTHLY:\
+    Costs: 20 bps, monthly rebalance\
+    Rebalances: 48\
+    Gross Return: 228.14%\
+    Cost Drag: 57.43%\
+    Net Return: 170.71%\
+    Sharpe Ratio: 1.718\
+    Max Drawdown: -40.22%\
+\
+[Step 6/8] Generating Visualizations...\
+  Creating equity curves...\
+  \uc0\u10003  Saved: equity_curves.png\
+  Creating underwater chart...\
+  \uc0\u10003  Saved: underwater_chart.png\
+  Creating rolling Sharpe...\
+  \uc0\u10003  Saved: rolling_sharpe_63.png\
+  Creating returns distribution...\
+  \uc0\u10003  Saved: returns_distribution.png\
+  Creating regime performance analysis...\
+  \uc0\u10003  Saved: regime_performance.png\
+\
+[Step 7/8] Saving Performance Summary...\
+\uc0\u10003  Saved: performance_summary.txt\
+\
+[Step 8/8] Saving Data...\
+\uc0\u10003  Saved: portfolio_returns.csv\
+\
+================================================================================\
+\uc0\u9989  REGIME-AWARE MULTI-ASSET BACKTEST COMPLETE!\
+================================================================================\
+\
+KEY FEATURES:\
+  \uc0\u9989  Trained on 52 symbols with stock-agnostic features\
+  \uc0\u9989  Ensemble model with regime-aware dynamic weighting\
+  \uc0\u9989  Automatic switching between vanilla/attention models\
+  \uc0\u9989  Diversified portfolio: 10 positions\
+\
+  REGIME AWARENESS:\
+    \'95 Model detected regimes automatically\
+    \'95 Attention model used: 14.3% of time\
+    \'95 Vanilla model used: 85.7% of time\
+    \'95 Dynamic adaptation to market conditions!\
+\
+  PERFORMANCE (Realistic Costs):\
+    Sharpe Ratio:         1.871\
+    Sortino Ratio:        0.029\
+    Calmar Ratio:         1.511\
+    Total Return:       198.07%\
+    Annualized Return:   58.58%\
+    Max Drawdown:       -38.76%\
+    Win Rate:            41.26%\
+\
+  FILES CREATED:\
+    \'95 equity_curves.png\
+    \'95 underwater_chart.png\
+    \'95 rolling_sharpe_63.png\
+    \'95 returns_distribution.png\
+    \'95 regime_performance.png\
+    \'95 performance_summary.txt\
+    \'95 portfolio_returns.csv\
+================================================================================\
+(.venv) (base) rayyanwaseem@Rayyans-MacBook-Pro Examples % }
