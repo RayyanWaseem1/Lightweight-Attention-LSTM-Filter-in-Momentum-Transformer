@@ -13,8 +13,9 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 
-from Models.Momentum_transformer import MomentumTransformerSimple, MomentumTransformerDualPath
-from Models.Ensemble_model import EnsembleMomentumTransformer
+from .config import ANNUALIZATION_SQRT
+from .Momentum_transformer import MomentumTransformerSimple, MomentumTransformerDualPath
+from .Ensemble_model import EnsembleMomentumTransformer
 
 @dataclass
 class PerformanceMetrics:
@@ -27,79 +28,66 @@ class PerformanceMetrics:
     num_observations: int
     last_updated: datetime 
 
-class PerformanceTracker:
-    #Tracking and computing performance metrics for a model 
+class RollingPerformanceTracker:
+    """Rolling performance of one model's realised P&L.
+
+    Renamed from ``PerformanceTracker``: ``Utils.Training`` has a class of that
+    name tracking per-epoch training history, which is a different thing.
+
+    Two bugs fixed here:
+
+    * ``update`` accumulated the raw **asset** return rather than
+      ``position * return``, so ``max_drawdown`` described the instrument, not
+      the model being evaluated.
+    * ``cumulative_returns`` was an unbounded list while ``returns`` and
+      ``positions`` were ``deque(maxlen=lookback_window)``, so drawdown was
+      measured over all history while Sharpe was measured over the last 50
+      bars.  Both now share one window.
+    """
 
     def __init__(self, lookback_window: int = 50):
         self.lookback_window = lookback_window
-        self.returns = deque(maxlen = lookback_window)
-        self.positions = deque(maxlen = lookback_window)
-        self.cumulative_returns = []
+        self.returns = deque(maxlen=lookback_window)
+        self.positions = deque(maxlen=lookback_window)
+        self.pnl = deque(maxlen=lookback_window)
 
     def update(self, position: float, realized_return: float) -> None:
-        #Update with new positions and realized returns 
-
-        #position: predicted position
-        #realized_return: actual realized return 
-
+        """Record one bar: the position taken and the return it earned."""
         self.positions.append(position)
         self.returns.append(realized_return)
-
-        #Tracking cumulative for drawdown calculation
-        if self.cumulative_returns:
-            self.cumulative_returns.append(
-                self.cumulative_returns[-1] + realized_return
-            )
-        else:
-            self.cumulative_returns.append(realized_return)
+        # P&L, not the asset return.
+        self.pnl.append(position * realized_return)
 
     def get_metrics(self) -> Optional[PerformanceMetrics]:
-        #Computing current performance metrics
+        if len(self.pnl) < 10:
+            return None
 
-        #Returns: PerformanceMetrics or None if the data is insufficient    
-        if len(self.returns) < 10:
-            return None 
-        
-        returns_array = np.array(self.returns)
-        positions_array = np.array(self.positions)
+        pnl = np.asarray(self.pnl, dtype=float)
 
-        #PnL = Position * return
-        pnl = positions_array * returns_array
+        mean_pnl = float(np.mean(pnl))
+        std_pnl = float(np.std(pnl))
+        sharpe = 0.0 if std_pnl < 1e-8 else mean_pnl / std_pnl * ANNUALIZATION_SQRT
 
-        #Annualized Sharpe Ratio 
-        mean_pnl = np.mean(pnl)
-        std_pnl = np.std(pnl) 
+        win_rate = float(np.mean(pnl > 0))
 
-        if std_pnl < 1e-8:
-            sharpe = 0.0
-        else:
-            sharpe = mean_pnl/std_pnl * np.sqrt(252)
-
-        #Other metrics
-        mean_return = np.mean(pnl)
-        std_return = std_pnl 
-
-        #Win rate
-        win_rate = np.mean(pnl > 0) if len(pnl) > 0 else 0.0
-
-        #Max drawdown
-        if self.cumulative_returns:
-            cumulative = np.array(self.cumulative_returns)
-            running_max = np.maximum.accumulate(cumulative)
-            drawdown = cumulative - running_max
-            max_drawdown = np.min(drawdown)
-        else:
-            max_drawdown = 0.0 
+        # Drawdown over the same window the other statistics use.
+        equity = np.cumprod(1.0 + pnl)
+        running_max = np.maximum.accumulate(equity)
+        max_drawdown = float(np.min((equity - running_max) / running_max))
 
         return PerformanceMetrics(
-            sharpe_ratio = sharpe,
-            mean_return = mean_return,
-            std_return = std_return,
-            max_drawdown = max_drawdown,
-            win_rate = win_rate,
-            num_observations = len(self.returns),
-            last_updated = datetime.now()
+            sharpe_ratio=sharpe,
+            mean_return=mean_pnl,
+            std_return=std_pnl,
+            max_drawdown=max_drawdown,
+            win_rate=win_rate,
+            num_observations=len(self.pnl),
+            last_updated=datetime.now(),
         )
+
+
+# Backwards-compatible alias for callers that imported the old name.
+PerformanceTracker = RollingPerformanceTracker
     
 class OnlineModelSelector:
     #Monitoring both model's performance and dynamically selecting the better one 
@@ -129,8 +117,8 @@ class OnlineModelSelector:
         self.switch_cooldown_period = switch_cooldown_period
 
         #Performance tracking 
-        self.vanilla_tracker = PerformanceTracker(lookback_window)
-        self.attention_tracker = PerformanceTracker(lookback_window)
+        self.vanilla_tracker = RollingPerformanceTracker(lookback_window)
+        self.attention_tracker = RollingPerformanceTracker(lookback_window)
 
         #State
         self.current_model = "vanilla" #Starting off conservative and according to the paper
@@ -155,20 +143,20 @@ class OnlineModelSelector:
             self.vanilla_model.eval()
             self.attention_model.eval() 
 
-            vanilla_pred = self.vanilla_model(x)
-
-            #handling different return signatures
-            if isinstance(self.attention_model, MomentumTransformerDualPath):
-                attention_pred, _ = self.attention_model(x, return_attention = False)
-            else:
-                attention_pred = self.attention_model(x)
+            # Every model now returns a uniform (position, info) tuple.
+            vanilla_pred, _ = self.vanilla_model(x)
+            attention_pred, _ = self.attention_model(x)
 
         #Storing for later performance update
         self.last_vanilla_pred = vanilla_pred.detach().cpu() 
         self.last_attention_pred = attention_pred.detach().cpu() 
 
-        #Select which model
-        model_name, selection_metadata = self._select_model() 
+        # Read the CURRENT selection. Re-selecting here made predict()
+        # non-idempotent: calling it twice on the same input could return
+        # different answers. Selection now happens in update_performance(),
+        # when new realised P&L actually arrives.
+        model_name = self.current_model
+        selection_metadata = self._selection_metadata()
 
         if model_name == "vanilla":
             final_pred = vanilla_pred
@@ -210,9 +198,13 @@ class OnlineModelSelector:
                 float(realized_returns[i])
             )
 
-        #Decrementing the cooldown period 
+        #Decrementing the cooldown period
         if self.switch_cooldown > 0:
             self.switch_cooldown -= 1
+
+        # Re-evaluate the selection now that new realised P&L has arrived.
+        # This is the only place self.current_model changes.
+        self._select_model()
 
         #Getting current metrics
         vanilla_metrics = self.vanilla_tracker.get_metrics()
@@ -237,6 +229,21 @@ class OnlineModelSelector:
 
         return metadata
     
+    def _selection_metadata(self) -> Dict:
+        """Read-only view of the current selection state.
+
+        Used by ``predict`` so that generating a prediction never mutates the
+        selector.
+        """
+        vanilla_metrics = self.vanilla_tracker.get_metrics()
+        attention_metrics = self.attention_tracker.get_metrics()
+        return {
+            "vanilla_sharpe": vanilla_metrics.sharpe_ratio if vanilla_metrics else None,
+            "attention_sharpe": attention_metrics.sharpe_ratio if attention_metrics else None,
+            "current_model": self.current_model,
+            "switch_cooldown": self.switch_cooldown,
+        }
+
     def _select_model(self) -> Tuple[str, Dict]:
         #Selecting the model based on the recent performance
 

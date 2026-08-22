@@ -1,201 +1,226 @@
-#Ensemble Model with Dynamic Weighting
-#Combines vanilla and attention-enhanced models with learned weights
+""" Regime-weighted ensemble of the vanilla and attention Momentum Transformers"""
 
+from __future__ import annotations 
+
+from collections import deque 
+from typing import Dict, List, Optional, Sequence, Tuple 
+
+import numpy as np 
 import torch
 import torch.nn as nn
-import numpy as np
-from typing import Dict, Tuple, Optional
-from collections import deque
 
-from .Momentum_transformer import MomentumTransformerSimple, MomentumTransformerDualPath
+from .Momentum_transformer import (
+    MomentumTransformerDualPath,
+    MomentumTransformerSimple,
+    model_kwargs_from_config,
+)
+
+EPS = 1e-8
+
+# Feature columns the regime extractor needs, by name
+REQUIRED_REGIME_COLUMNS = {
+    "returns": "return_1",
+    "rsi": "rsi",
+    "volatility": "volatility_21",
+    "momentum": "momentum_35",
+    "market_return": "market_return_1",
+    "market_volatility": "market_volatility",
+    "beta": "beta",
+}
+
+REGIME_FEATURE_NAMES: List[str] = [
+    # Stock-level
+    "high_vol", "med_vol", "low_vol",
+    "trend_strength", "vol_ratio", "mean_return", "abs_mean_return",
+    "return_range", "skewness", "momentum_short",
+    "rsi_current", "vol_feature_mean", "momentum_feature_current",
+
+    # Cross-sectional
+    "realtive_return", "relative_vol", "beta", "relative_strength",
+    "market_vol_level",
+
+    # Temporal
+    "vol_persistence", "vol_trend", "regime_shift",
+]
 
 class RegimeFeatureExtractor(nn.Module):
-    #Extracting regime features from input for weight network
+    """ Batched extraction of 21 regime descriptors from a feature window"""
 
-    def __init__(self, lookback_short: int = 21, lookback_long: int = 63):
+    def __init__(
+        self,
+        feature_names: Sequence[str],
+        lookback_short: int = 21,
+        lookback_long: int = 63,
+        column_map: Optional[Dict[str, str]] = None,
+    ):
         super().__init__()
         self.lookback_short = lookback_short
-        self.lookback_long = lookback_long
+        self.lookback_long = lookback_long 
+        self.feature_names = list(feature_names)
 
-    def forward(self, x: torch.Tensor, market_data: Optional[Dict[str, torch.Tensor]] = None) -> torch.Tensor:
-        #Extract the statistical features from input time series 
+        column_map = column_map or REQUIRED_REGIME_COLUMNS
+        lookup = {name: i for i, name in enumerate(self.feature_names)}
 
-        #x: [batch, seq_len, input_dim]
+        missing = [col for col in column_map.values() if col not in lookup]
+        if missing:
+            raise KeyError(
+                "RegimeFeatureExtractor cannot resolve required feature columns "
+                f"{missing}. Available columns: {sorted(lookup)[:20]}..."
+                "Regime featues are resolved by name; updated column_map if the "
+                "feature set changed."
+            )
 
-        #Features: [batch, num_features]
+        self.idx = {role: lookup[col] for role, col in column_map.items()}
 
-        batch_size = x.shape[0]
-        features_list = []
+        # Volatility terciles, fitted on the training split. Registered as
+        # buffers so they move with the module and are saved in the state dict
+        self.register_buffer("vol_q33", torch.tensor(float("nan")))
+        self.register_buffer("vol_q67", torch.tensor(float("nan")))
 
-        for i in range(batch_size):
-            x_sample = x[i, -self.lookback_long:, :] #[lookback_long, input_dim]
-
-            ### STOCK LEVEL FEATURES ###
-            returns = x_sample[:, 0] #[lookback_long]
-            rsi = x_sample[:, 1] if x_sample.shape[1] > 1 else returns #Adding RSI
-            volatility_feature = x_sample[:, 10] if x_sample.shape[1] > 10 else returns #Adding vol
-            momentum_feature = x_sample[:, 15] if x_sample.shape[1] > 15 else returns #Adding momentum
-
-            #1. Volatility features 
-            vol_short = torch.std(returns[-self.lookback_short:])
-            vol_long = torch.std(returns) if len(returns) >= self.lookback_long else vol_short
-            vol_ratio = vol_short / (vol_long + 1e-8)
-
-            #volatility regime indicator
-            high_vol = float(vol_short > 0.03)
-            med_vol = float(0.01 <= vol_short <= 0.03)
-            low_vol = float(vol_short < 0.01)
-
-            #2. Trend strength (autocorrelation)
-            if len(returns) > 1:
-                returns_np = returns.cpu().numpy()
-                autocorr = np.corrcoef(returns_np[:-1], returns_np[1:])[0,1]
-                trend_strength = abs(autocorr) if not np.isnan(autocorr) else 0.5
-            else:
-                trend_strength = 0.5
-
-            #3. Statistical features
-            mean_returns = torch.mean(returns)
-            abs_mean_returns = torch.mean(torch.abs(returns))
-            return_range = torch.max(returns) - torch.min(returns)
-            skewness = self._compute_skewness(returns)
-
-            #4. Momentum Indicators
-            momentum_short = returns[-1] / (returns[-self.lookback_short] + 1e-8) -1 if len(returns) >= self.lookback_short else 0.0
-            momentum_long = returns[-1] / (returns[0] + 1e-8) - 1
-
-            #5. Additional Features
-            rsi_current = float(rsi[-1])
-            vol_feature_mean = float(torch.mean(volatility_feature[-self.lookback_short:]))
-            momentum_feature_current = float(momentum_feature[-1])
-
-            ### CROSS SECTIONAL FEATURES ###
-            #Stock vs Current Market Context
-            if market_data is not None and 'market_returns' in market_data:
-                market_returns = market_data['market_returns'][-self.lookback_long:]
-
-                #1. Relative Return (stock vs market)
-                market_mean = torch.mean(market_returns[-self.lookback_short:])
-                stock_mean = torch.mean(returns[-self.lookback_short:])
-                relative_return = float(stock_mean - market_mean)
-
-                #2. Relative Volatility (stock/market ratio)
-                market_vol = torch.std(market_returns[-self.lookback_short:])
-                relative_vol = float(vol_short / (market_vol + 1e-8))
-
-                #3. Beta (Correlated with market)
-                stock_np = returns[-self.lookback_short:].cpu().numpy()
-                market_np = market_returns[-self.lookback_short:].cpu().numpy()
-                if len(stock_np) > 1 and len(market_np) > 1:
-                    corr = np.corrcoef(stock_np, market_np)[0,1]
-                    beta = corr if not np.isnan(corr) else 1.0
-                else:
-                    beta = 1.0
-
-                #4. Relative Strength (cumulative outperformance)
-                cum_stock = torch.sum(returns[-self.lookback_short:])
-                cum_market = torch.sum(market_returns[-self.lookback_short:])
-                relative_strength = float(cum_stock - cum_market)
-
-                #5. Market volatility level (is the market in a high volatility regime?)
-                market_vol_level = float(market_vol)
-            else:
-                #Defaults if there is no market data
-                relative_return = 0.0
-                relative_vol = 1.0
-                beta = 1.0
-                relative_strength = 0.0
-                market_vol_level = 0.02 
-
-            ### TEMPORAL FEATURES ###
-            #Time context: Early vs Late in the regime
-
-            #1. Volatility Persistence (how long has the volatility been high?)
-            vol_series = []
-            for j in range(len(returns)-1, max(0, len(returns)-self.lookback_long), -5):
-                if j >= self.lookback_short:
-                    v = torch.std(returns[max(0, j-self.lookback_short):j+1])
-                    vol_series.append(float(v))
-
-            if len(vol_series) > 1:
-                vol_persistence = float(np.std(vol_series)) #High = recently spiked, Low = persistent spike
-            else:
-                vol_persistence = 0.0
-
-            #2. Volatility Trend (is the volatility increasing or decresing?)
-            if len(vol_series) > 1:
-                vol_trend = vol_series[0] - vol_series[-1] #Positive = increasing vol
-            else:
-                vol_trend = 0.0
-
-            #3. Regime Shift Indicator (did the statistics change recently?)
-            if len(returns) >= self.lookback_long:
-                recent_mean = torch.mean(returns[-self.lookback_short:])
-                historical_mean = torch.mean(returns[-self.lookback_short:])
-                regime_shift = float(abs(recent_mean - historical_mean))
-            else:
-                regime_shift = 0.0
-
-            
-
-
-            #COMBINING ALL FEATURES INTO A VECTOR
-            feature_vector = torch.tensor([
-                #Stock specific features
-                high_vol, med_vol, low_vol, 
-                trend_strength, 
-                float(vol_ratio), 
-                float(mean_returns), 
-                float(abs_mean_returns), 
-                float(return_range), 
-                float(skewness), 
-                float(momentum_short),
-                rsi_current,
-                vol_feature_mean,
-                momentum_feature_current,
-
-                #Cross sectional features
-                relative_return, #stock return vs market
-                relative_vol, #stock vol/market vol (key: 2.5 = crisis, 1.2 = normal)
-                beta, #Correlation with the market
-                relative_strength, #Cumulative outperformance
-                market_vol_level, #Absolute market volatility
-
-                #Temporal features
-                vol_persistence, #volatility stability
-                vol_trend, #vol increasing/decreasing
-                regime_shift, #recent regime change
-            ], dtype = torch.float32, device = x.device) 
-
-            features_list.append(feature_vector)
-
-        return torch.stack(features_list) #[batch, 21]
-    
-    def _compute_skewness(self, x: torch.Tensor) -> float:
-        #computing skew of a tensor
-        mean = torch.mean(x)
-        std = torch.std(x)
-        if std < 1e-8:
-            return 0.0
+    # threshold fitting
+    @torch.no_grad()
+    def fit_thresholds(self, train_returns: torch.Tensor) -> "RegimeFeatureExtractor":
+        """ Fit volatility terciles from training-set short-window volatitilies.
         
-        skew = torch.mean(((x-mean) / std) ** 3)
-        return float(skew)
-    
+        ``train_returns``: [n_samples, seq_len] of per-bar returns.
+        """
+        window = train_returns[:, -self.lookback_short:]
+        vols = window.std(dim = 1)
+        vols = vols[torch.isfinite(vols)]
+        if vols.numel() < 3:
+            raise ValueError("Not enough samples to fit volatility terciles")
+
+        self.vol_q33 = torch.quantile(vols, 0.33).detach().clone()
+        self.vol_q67 = torch.quantile(vols, 0.67).detach().clone()
+        return self 
+
+    @property
+    def thresholds_fitted(self) -> bool:
+        return bool(torch.isfinite(self.vol_q33) and torch.isfinite(self.vol_q67))
+
+    # helpers 
+    @staticmethod 
+    def _skewness(w: torch.Tensor) -> torch.Tensor:
+        mu = w.mean(dim = 1, keepdim = True)
+        sd = w.std(dim = 1, keepdim = True)
+        return (((w - mu) / (sd + EPS)) ** 3).mean(dim = 1)
+
+    @staticmethod 
+    def _lag1_autocorr(w: torch.Tensor) -> torch.Tensor:
+        """ Signed lag-1 autocorrelation, batched"""
+        centered = w - w.mean(dim = 1, keepdim = True)
+        num = (centered[:, :-1] * centered[:, 1:]).sum(dim = 1)
+        den = (centered ** 2).sum(dim = 1)
+        return num / (den + EPS)
+
+    # API
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """ ``x``: [batch, seq_len, n_features] -> [batch, 21]."""
+        long_w, short_w = self.lookback_long, self.lookback_short 
+
+        returns = x[:, -long_w:, self.idx["returns"]]   # [B, long]
+        short_returns = returns[:, -short_w:]   # [B, short]
+
+        market = x[:, -long_w:, self.idx["market_return"]]
+        market_short = market[:, -short_w:]
+
+        # 1. Volatility
+        vol_short = short_returns.std(dim = 1)
+        vol_long = returns.std(dim = 1)
+        vol_ratio = vol_short / (vol_long + EPS)
+
+        if self.thresholds_fitted:
+            q33, q67 = self.vol_q33, self.vol_q67
+        else:
+            # pre-fit fallback: use this batch's own quantiles. Only reachable
+            # before fit_thresholds has run 
+            finite = vol_short[torch.isfinite(vol_short)]
+            q33 = torch.quantile(finite, 0.33) if finite.numel() > 2 else vol_short.mean()
+            q67 = torch.quantile(finite, 0.67) if finite.numel() > 2 else vol_short.mean()
+
+        high_vol = (vol_short > q67).float()
+        med_vol = ((vol_short > q33) & (vol_short <= q67)).float() 
+        low_vol = (vol_short <= q33).float() 
+
+        # 2. Trend strength (signed)
+        trend_strength = self._lag1_autocorr(returns)
+
+        # 3. Distribution shape 
+        mean_return = returns.mean(dim = 1)
+        abs_mean_return = returns.abs().mean(dim = 1)
+        return_range = returns.max(dim = 1).values - returns.min(dim = 1).values
+        skewness = self._skewness(returns)
+
+        # 4. Momentum as a cumulative return 
+        momentum_short = torch.prod(1.0 + short_returns, dim = 1) - 1.0 
+
+        # 5. Named auxiliary features 
+        rsi_current = x[:, -1, self.idx["rsi"]]
+        vol_feature_mean = x[:, -short_w:, self.idx["volatility"]].mean(dim = 1)
+        momentum_feature_current = x[:, -1, self.idx["momentum"]]
+
+        # 6. Cross-sectional, from this sample's own window 
+        relative_return = short_returns.mean(dim = 1) - market_short.mean(dim = 1)
+        market_vol = market_short.std(dim = 1)
+        relative_vol = vol_short / (market_vol + EPS)
+        beta = x[:, -1, self.idx["beta"]]
+        relative_strength = short_returns.sum(dim = 1) - market_short.sum(dim = 1)
+        market_vol_level = x[:, -short_w:, self.idx["market_volatility"]].mean(dim = 1)
+
+        # 7. Temporal 
+        step = max(1, short_w // 4)
+        if returns.shape[1] >= short_w + step:
+            sub = returns.unfold(1, short_w, step) # [B, n_sub, short]
+            sub_vols = sub.std(dim = 2)
+            vol_persistence = sub_vols.std(dim = 1)
+            vol_trend = sub_vols[:, -1] - sub_vols[:, 0]
+        else:
+            vol_persistence = torch.zeros_like(vol_short)
+            vol_trend = torch.zeros_like(vol_short)
+
+        # regime_shift compares the recent window to the EARLIER part of long window 
+        if returns.shape[1] > short_w:
+            historical_mean = returns[:, :-short_w].mean(dim = 1)
+        else: 
+            historical_mean = torch.zeros_like(mean_return)
+        regime_shift = (short_returns.mean(dim = 1) - historical_mean).abs()
+
+        features = torch.stack(
+            [
+                high_vol, med_vol, low_vol,
+                trend_strength, vol_ratio, mean_return, abs_mean_return,
+                return_range, skewness, momentum_short,
+                rsi_current, vol_feature_mean, momentum_feature_current,
+                relative_return, relative_vol, beta, relative_strength,
+                market_vol_level,
+                vol_persistence, vol_trend, regime_shift,
+            ],
+            dim = 1,
+        )
+        return torch.nan_to_num(features, nan = 0.0, posinf = 0.0, neginf = 0.0)
 
 class DynamicWeightNetwork(nn.Module):
-    #A neural network that learns how to weight the vanilla vs attention model based on the current regime
+    """ Maps regime descriptors to the attention model's blend weight"""
 
-    def __init__(self,
-                 regime_feature_dim: int = 21,
-                 hidden_dim: int = 32,
-                 dropout: float = 0.2,
-                 min_weight: float = 0.2,
-                 max_weight: float = 0.8):
+    def __init__(
+        self,
+        regime_feature_dim: int = 21,
+        hidden_dim: int = 32,
+        dropout: float = 0.2,
+        min_weight: float = 0.2,
+        max_weight: float = 0.8,
+    ):
         super().__init__()
-        self.min_weight = min_weight
-        self.max_weight = max_weight
+        self.regime_feature_dim = regime_feature_dim 
+        self.min_weight = min_weight 
+        self.max_weight = max_weight 
 
         self.network = nn.Sequential(
+            # LayerNorm on the input: regime descriptors live on wildly 
+            # different scales (RSI ~50 next to mean returns ~1e-4), and 
+            # without it a single large value saturates the sigmoud and pins 
+            # the blend weight for that sample 
+            nn.LayerNorm(regime_feature_dim),
             nn.Linear(regime_feature_dim, hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -203,118 +228,121 @@ class DynamicWeightNetwork(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim // 2, 1),
-            nn.Sigmoid() #Output in [0,1]
+            nn.Sigmoid(),
         )
 
     def forward(self, regime_features: torch.Tensor) -> torch.Tensor:
-        raw_weight = self.network(regime_features).squeeze(-1)
-
-        #Constrain the output to [0.2,0.8] instead of [0,1]
-        attention_weight = self.min_weight + (self.max_weight - self.min_weight) * raw_weight
-
-        return attention_weight
-    
+        if regime_features.shape[1] != self.regime_feature_dim:
+            raise ValueError(
+                f"DynamicWeightNetwork expect {self.regime_feature_dim} regime "
+                f"features, got {regime_features.shape[1]}. "
+                "Check EnsembleConfig.regime_feature_dim against "
+                "len(REGIME_FEATURE_NAMES)."
+            )
+        raw = self.network(regime_features).squeeze(-1)
+        return self.min_weight + (self.max_weight - self.min_weight) * raw 
 
 class EnsembleMomentumTransformer(nn.Module):
-    #Ensemble of vanilla and attention-enhanced Momentum Transformer
-    #Has dynamic weighting based on current market regime
+    """ ``w * attention + (1 - w) * vanilla``, with ``w`` chosen per regime"""
 
-    def __init__(self,
-                 input_dim: int,
-                 hidden_dim: int = 64,
-                 num_transformer_layers: int = 2,
-                 num_heads: int = 4,
-                 dropout: float = 0.2,
-                 regime_feature_dim: int = 21,
-                 weight_hidden_dim: int = 32):
+    def __init__(
+        self,
+        feature_names: Sequence[str],
+        model_kwargs: Dict,
+        regime_feature_dim: int = 21,
+        weight_hidden_dim: int = 32,
+        weight_dropout: float = 0.2,
+        lookback_short: int = 21,
+        lookback_long: int = 63,
+    ):
         super().__init__()
 
-        #Vanilla Model
-        self.vanilla_model = MomentumTransformerSimple(
-            input_dim = input_dim,
-            hidden_dim = hidden_dim,
-            num_transformer_layers=num_transformer_layers,
-            num_heads=num_heads,
-            dropout=dropout
-        )
+        if regime_feature_dim != len(REGIME_FEATURE_NAMES):
+            raise ValueError(
+                f"regime_feature_dim = {regime_feature_dim} but the extractor emits "
+                f"{len(REGIME_FEATURE_NAMES)}. These must match "
+            )
 
-        #Attention enhanced model
-        self.attention_model = MomentumTransformerDualPath(
-            input_dim = input_dim,
-            hidden_dim = hidden_dim,
-            num_transformer_layers = num_transformer_layers,
-            num_heads = num_heads,
-            dropout = dropout, 
-            use_lstm_attention= True
-        )
+        self.vanilla_model: MomentumTransformerSimple = MomentumTransformerSimple(**model_kwargs)
+        self.attention_model: MomentumTransformerDualPath = MomentumTransformerDualPath(**model_kwargs)
 
-        #Regime feature extractor
         self.regime_extractor = RegimeFeatureExtractor(
-            lookback_short=21,
-            lookback_long=63
+            feature_names = feature_names,
+            lookback_short = lookback_short,
+            lookback_long = lookback_long,
         )
-
-        #Dynamic weight network
         self.weight_network = DynamicWeightNetwork(
             regime_feature_dim = regime_feature_dim,
             hidden_dim = weight_hidden_dim,
-            dropout = dropout
+            dropout = weight_dropout,
         )
 
-        #Statistics tracking
-        self.weight_history = deque(maxlen = 1000)
+        self.weight_history = deque(maxlen = 100_000)
+        self._recording = False 
 
-    def forward(self,
-                x: torch.Tensor,
-                return_components: bool = False,
-                market_data: Optional[Dict[str, torch.Tensor]] = None) -> Tuple[torch.Tensor, Optional[Dict]]:
+    # training-stage control 
+    def freeze_submodels(self) -> "EnsembleMomentumTransformer":
+        """ Freeze both sub-models so only the weight network trains. 
         
-        #x: [batch, seq_len, input_dim]
-        #return_components: Whether to return the individual predictions and weights
-        #market data: optional dict with market context
+        Used by the two-stage schedule the README describes: train each arm 
+        independently on the training split, freeze, then fit the blend on the 
+        validation split. 
+        """
+        for param in self.vanilla_model.parameters():
+            param.requires_grad = False 
+        for param in self.attention_model.parameters():
+            param.requires_grad = False
+        self.vanilla_model.eval()
+        self.attention_model.eval()
+        return self
 
-        #ensemble_positions: [batch] - weighted combination
-        #metadata: dict with individual predictions and weights - optional
+    def record_weights(self, enabled: bool = True) -> "EnsembleMomentumTransformer":
+        """ Enable/disable blend-weight recording (off during training)"""
+        self._recording = enabled 
+        return self 
 
-        #Getting predictions from both models
-        vanilla_pred = self.vanilla_model(x)
-        attention_pred = self.attention_model(x)[0]
+    def reset_weight_history(self) -> None:
+        self.weight_history.clear() 
 
-        #Extracting regime features WITH market context
-        regime_features = self.regime_extractor(x, market_data = market_data)
+    # API 
+    def forward(
+        self,
+        x: torch.Tensor,
+        return_components: bool = False,
+        ex_ante_vol: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, Optional[Dict]]:
+        vanilla_pred, _ = self.vanilla_model(x, ex_ante_vol = ex_ante_vol)
+        attention_pred, _ = self.attention_model(x, ex_ante_vol = ex_ante_vol)
 
-        #computing dynamic weights
+        regime_features = self.regime_extractor(x)
         attention_weight = self.weight_network(regime_features)
-        vanilla_weight = 1.0 - attention_weight
+        vanilla_weight = 1.0 - attention_weight 
 
-        #Weighted combination
-        ensemble_pred = vanilla_weight * vanilla_pred + attention_weight * attention_pred
+        ensemble_pred = vanilla_weight * vanilla_pred + attention_weight * attention_pred 
 
-        #tracking weights
-        self.weight_history.extend(attention_weight.detach().cpu().numpy().tolist())
+        # Recording is explicit and off by default
+        if self._recording: 
+            self.weight_history.extend(
+                attention_weight.detach().cpu().numpy().tolist()
+            )
 
         if return_components:
             metadata = {
                 "vanilla_predictions": vanilla_pred.detach(),
                 "attention_predictions": attention_pred.detach(),
-                "vanilla_weights": vanilla_weight.detach(),
                 "attention_weights": attention_weight.detach(),
-                "mean_attention_weight": float(torch.mean(attention_weight)),
-                "regime_features": regime_features.detach()
+                "vanilla_weights": vanilla_weight.detach(),
+                "mean_attention_weight": float(attention_weight.detach().mean()),
+                "regime_features": regime_features.detach(),
             }
+
             return ensemble_pred, metadata
-        return ensemble_pred, None
-    
+        return ensemble_pred, None 
+
     def get_weight_statistics(self) -> Dict[str, float]:
-        #Getting statisticsa bout weight distribution 
-
-        #Returns dict with weight statistics
-
         if not self.weight_history:
             return {}
-        
-        weights = np.array(self.weight_history)
-
+        weights = np.asarray(self.weight_history, dtype = float)
         return {
             "mean_attention_weight": float(np.mean(weights)),
             "std_attention_weight": float(np.std(weights)),
@@ -322,50 +350,18 @@ class EnsembleMomentumTransformer(nn.Module):
             "max_attention_weight": float(np.max(weights)),
             "median_attention_weight": float(np.median(weights)),
             "attention_usage_pct": float(np.mean(weights > 0.5) * 100),
-            "vanilla_usage_pct": float(np.mean(weights < 0.5) * 100)
+            "vanilla_usage_pct": float(np.mean(weights <= 0.5) * 100),
+            "n_observations": int(weights.size),
         }
-    
-def get_ensemble_model(config):
-    #factory function to create the ensemble model
 
+def get_ensemble_model(config, feature_names: Sequence[str]) -> EnsembleMomentumTransformer:
+    """ Build the ensemble from a full ``Config`` plus the resolved feature order"""
     return EnsembleMomentumTransformer(
-        input_dim = config.model.input_dim,
-        hidden_dim = config.model.hidden_dim,
-        num_transformer_layers=config.model.num_transformer_layers,
-        num_heads = config.model.num_attention_heads,
-        dropout = config.model.transformer_dropout,
-        regime_feature_dim = config.ensemble.regime_feature_dim,
-        weight_hidden_dim=config.ensemble.weight_hidden_dim
+        feature_names = feature_names,
+        model_kwargs = model_kwargs_from_config(config.model, config.training),
+        regime_feature_dim=config.ensemble.regime_feature_dim,
+        weight_hidden_dim=config.ensemble.weight_hidden_dim,
+        weight_dropout=config.ensemble.weight_dropout,
+        lookback_short=config.regime_detector.lookback_short,
+        lookback_long=config.regime_detector.lookback_long,
     )
-
-if __name__ == "__main__":
-    from Models.config import get_production_config
-
-    config = get_production_config()
-    config.model.input_dim = 32
-
-    ensemble = get_ensemble_model(config)
-
-    batch_size = 16
-    seq_len = 252
-    x = torch.randn(batch_size, seq_len, config.model.input_dim)
-
-    positions, metadata = ensemble(x, return_components = True)
-
-    print(f"Input shape: {x.shape}")
-    print(f"Ensemble positions shape: {positions.shape}")
-    print(f"Position range: [{positions.min():.3f}, {positions.max():.3f}]")
-    print(f"\nVanilla predictions range: [{metadata['vanilla_predictions'].min():.3f}, {metadata['vanilla_predictions'].max():.3f}]")
-    print(f"Attention predictions range: [{metadata['attention_predictions'].min():.3f}, {metadata['attention_predictions'].max():.3f}]")
-    print(f"\nMean attention weight: {metadata['mean_attention_weight']:.3f}")
-    print(f"Attention weight range: [{metadata['attention_weights'].min():.3f}, {metadata['attention_weights'].max():.3f}]")
-    
-    #Count parameters
-    num_params = sum(p.numel() for p in ensemble.parameters())
-    print(f"\nTotal parameters: {num_params:,}")
-    
-    #Weight statistics
-    weight_stats = ensemble.get_weight_statistics()
-    print("\nWeight Statistics:")
-    for key, value in weight_stats.items():
-        print(f"  {key}: {value:.4f}")
