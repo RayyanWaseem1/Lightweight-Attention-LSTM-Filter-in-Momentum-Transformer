@@ -23,6 +23,7 @@ from Models.config import BacktestConfig, PERIODS_PER_YEAR, bars
 from Utils import Metrics 
 
 EPS = 1e-12
+GROSS_EXPOSURE_TOL = 1e-6
 
 ### Rebalance Schedule ###
 
@@ -120,7 +121,7 @@ def build_weight_matrix(
     if not rows:
         return pd.DataFrame(index = calendar)
 
-    weights = pd.DataFrame(rows).T.reindex(columns = pred_matrix.columns)
+    weights = pd.DataFrame(rows).T.reindex(columns = pred_matrix.columns).fillna(0.0)
     # Hold positions between rebalances instead of renormalizing gross exposure
     # on bars where only some names printed 
     weights = weights.reindex(calendar).ffill().fillna(0.0)
@@ -152,9 +153,24 @@ def run_portfolio_backtest(
     )
     if weights.empty or weights.shape[1] == 0:
         empty = pd.Series(dtype = float, index = pd.DatetimeIndex([]))
+        exposure = {
+            "mean_gross": 0.0,
+            "median_gross": 0.0,
+            "p95_gross": 0.0,
+            "max_gross": 0.0,
+            "mean_net": 0.0,
+            "median_net": 0.0,
+            "p95_abs_net": 0.0,
+            "max_abs_net": 0.0,
+            "mean_position_count": 0.0,
+            "max_position_count": 0,
+        }
         return {"gross_returns": empty, "net_returns": empty,
-                 "weights": weights, "turnover": empty,
-                 "n_rebalances": 0, "total_cost": 0.0}
+                 "weights": weights, "gross_exposure": empty, "net_exposure": empty,
+                 "position_count": empty, "exposure": exposure, "turnover": empty,
+                 "n_rebalances": 0, "total_turnover": 0.0, "mean_turnover": 0.0,
+                 "total_cost": 0.0, "cost_rate": float(cost_rate),
+                 "rebalance_frequency": config.rebalance_frequency}
 
     ret_matrix = tradeable_returns.pivot_table(
         index = "timestamp", columns = "symbol", values = "tradeable_return", aggfunc = "last"
@@ -163,6 +179,18 @@ def run_portfolio_backtest(
     ret_matrix = ret_matrix.fillna(0.0)
 
     gross_returns = (weights * ret_matrix).sum(axis = 1)
+
+    gross_exposure = weights.abs().sum(axis = 1)
+    net_exposure = weights.sum(axis = 1)
+    position_count = (weights.abs() > EPS).sum(axis = 1)
+
+    max_observed_gross = float(gross_exposure.max()) if len(gross_exposure) else 0.0
+    if max_observed_gross > config.max_gross + GROSS_EXPOSURE_TOL:
+        raise AssertionError(
+            f"Gross exposure exceeded max_gross: observed {max_observed_gross:.12f}, "
+            f"limit {config.max_gross:.12f}. Check portfolio normalization and "
+            "volatility targeting before trusting the run."
+        )
 
     # Realized turnover: the first row counts as entering from flat
     weight_changes = weights.diff()
@@ -176,11 +204,30 @@ def run_portfolio_backtest(
     active = weights.abs().sum(axis = 1) > EPS
     gross_returns, net_returns = gross_returns[active], net_returns[active]
     turnover, costs = turnover[active], costs[active]
+    gross_exposure, net_exposure = gross_exposure[active], net_exposure[active]
+    position_count = position_count[active]
+
+    exposure = {
+        "mean_gross": float(gross_exposure.mean()) if len(gross_exposure) else 0.0,
+        "median_gross": float(gross_exposure.median()) if len(gross_exposure) else 0.0,
+        "p95_gross": float(gross_exposure.quantile(0.95)) if len(gross_exposure) else 0.0,
+        "max_gross": float(gross_exposure.max()) if len(gross_exposure) else 0.0,
+        "mean_net": float(net_exposure.mean()) if len(net_exposure) else 0.0,
+        "median_net": float(net_exposure.median()) if len(net_exposure) else 0.0,
+        "p95_abs_net": float(net_exposure.abs().quantile(0.95)) if len(net_exposure) else 0.0,
+        "max_abs_net": float(net_exposure.abs().max()) if len(net_exposure) else 0.0,
+        "mean_position_count": float(position_count.mean()) if len(position_count) else 0.0,
+        "max_position_count": int(position_count.max()) if len(position_count) else 0,
+    }
 
     return {
         "gross_returns": gross_returns,
         "net_returns": net_returns,
         "weights": weights.loc[active],
+        "gross_exposure": gross_exposure,
+        "net_exposure": net_exposure,
+        "position_count": position_count,
+        "exposure": exposure,
         "turnover": turnover,
         "costs": costs,
         "n_rebalances": int(len(schedule)),

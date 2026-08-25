@@ -108,6 +108,22 @@ def test_dynamic_weights_produce_nonzero_turnover(toy_market):
         result["total_turnover"] * cfg.cost_rate, rel=1e-9
     )
 
+def test_gross_cap_allows_roundoff_but_rejects_real_breach(toy_market):
+    prices, returns, calendar = toy_market
+    predictions = pd.DataFrame(
+        [{"timestamp": ts, "symbol": s, "prediction": v}
+         for ts in calendar for s, v in {"AAA": 1.0, "BBB": -0.5}.items()]
+    )
+
+    ok = BacktestConfig(rebalance_frequency="weekly", max_positions=2,
+                        max_gross=1.0 - 5e-7)
+    run_portfolio_backtest(predictions, returns, calendar, ok)
+
+    too_low = BacktestConfig(rebalance_frequency="weekly", max_positions=2,
+                             max_gross=0.99)
+    with pytest.raises(AssertionError, match="Gross exposure exceeded"):
+        run_portfolio_backtest(predictions, returns, calendar, too_low)
+
 
 def test_static_predictions_incur_no_ongoing_cost(toy_market):
     """A book that never trades must be charged only for its initial entry."""

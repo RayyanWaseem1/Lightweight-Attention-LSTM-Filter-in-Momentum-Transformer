@@ -351,14 +351,16 @@ def deflated_sharpe_ratio(
     skew = float(stats.skew(r))
     kurt = float(stats.kurtosis(r, fisher = False))
 
-    # Expected maximum Sharpe under the null of zero true skill across trials 
+    # Expected maximum Sharpe under the null of zero true skill across trials,
+    # expressed as a normal quantile. It becomes a Sharpe threshold only after
+    # multiplying by the estimator standard error below.
     euler = 0.5772156649015329
     if n_trials > 1:
         z1 = stats.norm.ppf(1.0 - 1.0 / n_trials)
         z2 = stats.norm.ppf(1.0 - 1.0 / (n_trials * np.e))
-        expected_max = (1 - euler) * z1 + euler * z2 
+        expected_max_z = (1 - euler) * z1 + euler * z2
     else:
-        expected_max = 0.0
+        expected_max_z = 0.0
 
     # Variance of the Sharpe estimator under non-normal returns 
     denom = 1.0 - skew * sr + (kurt - 1.0) / 4.0 * sr**2
@@ -366,16 +368,17 @@ def deflated_sharpe_ratio(
         denom = EPS 
     sr_std = np.sqrt(denom / (n-1))
 
-    threshold = benchmark_sharpe / np.sqrt(periods_per_year) + expected_max + sr_std 
+    threshold = benchmark_sharpe / np.sqrt(periods_per_year) + expected_max_z * sr_std
     dsr = float(stats.norm.cdf((sr - threshold) / (sr_std + EPS)))
 
     return {
         "sharpe": float(sr * np.sqrt(periods_per_year)),
-        "expected_max_sharpe": float(expected_max * sr_std * np.sqrt(periods_per_year)),
+        "expected_max_sharpe": float(expected_max_z * sr_std * np.sqrt(periods_per_year)),
         "deflated_sharpe": dsr,
         "n_trials": int(n_trials),
         "skew": skew,
         "excess_kurtosis": kurt - 3.0,
+        "sharpe_standard_error": float(sr_std * np.sqrt(periods_per_year)),
     }
 
 def alpha_beta(

@@ -174,7 +174,13 @@ class BacktestConfig:
     # Portfolio construction 
     max_positions: int = 10 
     max_weight: float = 0.2 
+    max_gross: float = 1.0
     rebalance_frequency: str = "weekly" # daily | weekly | monthly 
+
+    # Cost scenarios reported beside the configured live cost rate.
+    cost_scenarios: List[float] = field(
+        default_factory=lambda: [0.0005, 0.0010, 0.0020]
+    )
 
     # Walk-forward windows, expressed in trading days and converted to bars 
     wf_train_days: int = 504 # 2 years

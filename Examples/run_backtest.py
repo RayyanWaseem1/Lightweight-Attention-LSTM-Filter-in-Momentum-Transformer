@@ -231,6 +231,17 @@ def predict_dataset(
     frame["prediction"] = predictions[: len(frame)]
     return frame 
 
+def scale_to_volatility(
+    returns: pd.Series,
+    target_volatility: float,
+    periods_per_year: float,
+) -> pd.Series:
+    """Scale a return series to a target annualized volatility."""
+    vol = Metrics.annualized_volatility(returns, periods_per_year)
+    if vol <= 0 or target_volatility <= 0:
+        return pd.Series(0.0, index=returns.index, name=returns.name)
+    return (returns * (target_volatility / vol)).rename(returns.name)
+
 def train_variant(
     model_type: str,
     config: Config,
@@ -280,12 +291,14 @@ def train_variant(
 
     if model_type != "ensemble" or not config.ensemble.pretrain_submodels:
         model = build_model(model_type, config, feature_names)
+        fit_regime_thresholds(model, train_dataset, feature_names)
         if verbose:
             print(f" Parameters: {count_parameters(model):,}")
         fit(model, config.training.num_epochs)
         return model 
 
     model = cast(EnsembleMomentumTransformer, build_model("ensemble", config, feature_names))
+    fit_regime_thresholds(model, train_dataset, feature_names)
     if verbose:
         print(f" Parameters: {count_parameters(model):,} "
               f" (vanilla {count_parameters(model.vanilla_model):,} | "
@@ -337,6 +350,7 @@ def build_report(
     config: Config,
     periods_per_year: float,
     n_trials: int,
+    burn_in_bars: int,
 ) -> Dict:
     net = backtest["net_returns"]
     gross = backtest["gross_returns"]
@@ -347,6 +361,34 @@ def build_report(
         "tsmom": tsmom_baseline(prices, returns_df, net.index),
     }
     comparison = compare_to_baseline(net, baselines, periods_per_year)
+
+    spy_aligned = baselines["spy"].reindex(net.index).fillna(0.0)
+    common_vol = Metrics.annualized_volatility(spy_aligned, periods_per_year)
+    if common_vol <= 0:
+        common_vol = config.training.target_volatility
+
+    vol_matched = {
+        "target_volatility": common_vol,
+        "strategy": Metrics.performance_summary(
+            scale_to_volatility(net, common_vol, periods_per_year), periods_per_year
+        ),
+    }
+    for name, series in baselines.items():
+        aligned = series.reindex(net.index).fillna(0.0)
+        vol_matched[name] = Metrics.performance_summary(
+            scale_to_volatility(aligned, common_vol, periods_per_year),
+            periods_per_year,
+        )
+
+    cost_scenarios = {}
+    for rate in config.backtest.cost_scenarios:
+        scenario = gross - backtest["turnover"] * rate
+        cost_scenarios[f"{int(round(rate * 10000))}bps"] = {
+            "cost_rate": float(rate),
+            **Metrics.performance_summary(scenario, periods_per_year,
+                                          turnover_series=backtest["turnover"]),
+            "total_cost": float((backtest["turnover"] * rate).sum()),
+        }
 
     # Predictive power, on RAW predictions
     merged = predictions.merge(
@@ -361,14 +403,29 @@ def build_report(
         merged["prediction"].to_numpy(), merged["target"].to_numpy(), n_boot = 500
     )
     dir_acc = Metrics.directional_accuracy(merged["prediction"], merged["target"])
+    pred_mean = float(merged["prediction"].mean()) if len(merged) else 0.0
+    pred_median = float(merged["prediction"].median()) if len(merged) else 0.0
+    target_mean = float(merged["target"].mean()) if len(merged) else 0.0
+    target_median = float(merged["target"].median()) if len(merged) else 0.0
+    demeaned_dir_acc = Metrics.directional_accuracy(
+        merged["prediction"] - pred_mean,
+        merged["target"] - target_mean,
+    )
 
     dsr = Metrics.deflated_sharpe_ratio(net, n_trials = n_trials,
                                         periods_per_year=periods_per_year)
 
     return {
+        "test_period": {
+            "start": str(net.index.min()),
+            "end": str(net.index.max()),
+            "symbol_count": int(len(symbols)),
+            "burn_in_bars": int(burn_in_bars),
+        },
         "gross": Metrics.performance_summary(gross, periods_per_year),
         "net": Metrics.performance_summary(net, periods_per_year,
                                            turnover_series = backtest["turnover"]),
+        "exposure": backtest["exposure"],
         "costs": {
             "cost_rate": backtest["cost_rate"],
             "n_rebalances": backtest["n_rebalances"],
@@ -377,7 +434,9 @@ def build_report(
             "mean_turnover": backtest["mean_turnover"],
             "total_cost": backtest["total_cost"],
         },
+        "cost_scenarios": cost_scenarios,
         "baselines": comparison,
+        "vol_matched": vol_matched,
         "prediction_quality": {
             "n_observations": int(len(merged)),
             "pooled_ic": ic_pooled,
@@ -390,6 +449,11 @@ def build_report(
             "cross_sectional_ic": ic_cs,
             "block_bootstrap_ic": ic_boot,
             "directional_accuracy": dir_acc,
+            "demeaned_directional_accuracy": demeaned_dir_acc,
+            "prediction_mean": pred_mean,
+            "prediction_median": pred_median,
+            "target_mean": target_mean,
+            "target_median": target_median,
         },
         "multiple_testing": dsr,
     }
@@ -473,6 +537,8 @@ def write_summary(report: Dict, output_dir: Path, model_type: str) -> None:
     add("=" * 78)
 
     net, gross, costs = report["net"], report["gross"], report["costs"]
+    exposure = report["exposure"]
+    test_period = report["test_period"]
 
     add("\nHEADLINE (net of costs)")
     add("-" * 78)
@@ -488,6 +554,19 @@ def write_summary(report: Dict, output_dir: Path, model_type: str) -> None:
     add(f"  Win rate                              : {net['win_rate']:8.2%}")
     add(f"  Periods / days                        : {net['n_periods']:,} / {net.get('n_days', 0):,}")
     add(f"  Bars per year used                    : {net['periods_per_year']:.0f}")
+    add(f"  Test period                           : {test_period['start']} -> {test_period['end']}")
+    add(f"  Symbols / burn-in bars                : {test_period['symbol_count']} / {test_period['burn_in_bars']}")
+
+    add("\nEXPOSURE")
+    add("-" * 78)
+    add(f"  Gross exposure mean/median/p95/max    : "
+        f"{exposure['mean_gross']:6.3f} / {exposure['median_gross']:6.3f} / "
+        f"{exposure['p95_gross']:6.3f} / {exposure['max_gross']:6.3f}")
+    add(f"  Net exposure mean/median/p95abs/maxabs: "
+        f"{exposure['mean_net']:6.3f} / {exposure['median_net']:6.3f} / "
+        f"{exposure['p95_abs_net']:6.3f} / {exposure['max_abs_net']:6.3f}")
+    add(f"  Position count mean/max               : "
+        f"{exposure['mean_position_count']:6.2f} / {exposure['max_position_count']}")
 
     add("\nTRADING ACTIVITY")
     add("-" * 78)
@@ -498,6 +577,12 @@ def write_summary(report: Dict, output_dir: Path, model_type: str) -> None:
     add(f"  Cost rate (one-way)                   : {costs['cost_rate']:8.5f}")
     add(f"  Total cost drag                       : {costs['total_cost']:8.4f}")
     add(f"  Gross total return                    : {gross['total_return']:8.2%}")
+
+    add("\nCOST SCENARIOS")
+    add("-" * 78)
+    for name, stats in report["cost_scenarios"].items():
+        add(f"  {name:>5s} one-way  Sharpe {stats['sharpe_ratio']:7.3f} | "
+            f"return {stats['total_return']:8.2%} | total cost {stats['total_cost']:7.4f}")
 
     add("\nBASELINES")
     add("-" * 78)
@@ -515,6 +600,15 @@ def write_summary(report: Dict, output_dir: Path, model_type: str) -> None:
             add(f"    Beta               : {value['beta']:8.3f}")
             add(f"    Correlation        : {value['correlation']:8.3f}")
 
+    vm = report["vol_matched"]
+    add(f"\nVOL-MATCHED TO SPY VOL ({vm['target_volatility']:.2%})")
+    add("-" * 78)
+    for name, stats in vm.items():
+        if name == "target_volatility":
+            continue
+        add(f"  {name:14s} Sharpe {stats['sharpe_ratio']:7.3f} | "
+            f"CAGR {stats['annualized_return']:8.2%} | DD {stats['max_drawdown']:7.2%}")
+
     pq = report["prediction_quality"]
     cs = pq["cross_sectional_ic"]
     boot = pq["block_bootstrap_ic"]
@@ -528,6 +622,11 @@ def write_summary(report: Dict, output_dir: Path, model_type: str) -> None:
     add(f"  Block-bootstrap IC 95% CI             : "
         f"[{boot['ic_ci_low']:.4f}, {boot['ic_ci_high']:.4f}]")
     add(f"  Directional accuracy                  : {pq['directional_accuracy']:8.2%}")
+    add(f"  Demeaned directional accuracy         : {pq['demeaned_directional_accuracy']:8.2%}")
+    add(f"  Prediction mean / median              : "
+        f"{pq['prediction_mean']:9.5f} / {pq['prediction_median']:9.5f}")
+    add(f"  Target mean / median                  : "
+        f"{pq['target_mean']:9.5f} / {pq['target_median']:9.5f}")
     add(f"\n  {pq['pooled_ic_pvalue_note']}")
 
     mt = report["multiple_testing"]
@@ -535,6 +634,7 @@ def write_summary(report: Dict, output_dir: Path, model_type: str) -> None:
     add("-" * 78)
     add(f"  Configurations counted                : {mt['n_trials']}")
     add(f"  Expected max Sharpe under null        : {mt['expected_max_sharpe']:8.3f}")
+    add(f"  Sharpe standard error                 : {mt['sharpe_standard_error']:8.3f}")
     add(f"  Deflated Sharpe (P[true SR > 0])      : {mt['deflated_sharpe']:8.4f}")
     add("\n" + "=" * 78)
 
@@ -679,8 +779,6 @@ def main(argv=None) -> int:
 
     # 6. Train 
     print(f"\n[Training] {args.model}")
-    model = build_model(args.model, config, feature_cols)
-    fit_regime_thresholds(model, train_ds, feature_cols)
     model = train_variant(
         args.model, config, train_ds, val_ds, feature_cols, validation_fn
     )
@@ -696,18 +794,34 @@ def main(argv=None) -> int:
         )
 
         def train_fn(fit_features, val_features):
-            fit_ds = MultiAssetWindowDataset(fit_features, seq_len, feature_cols,
+            wf_normalizer = FeatureNormalizer().fit(fit_features[feature_cols])
+
+            def wf_normalise(df):
+                out = df.copy()
+                out[feature_cols] = wf_normalizer.transform(df[feature_cols])
+                return out
+
+            fit_features_n = wf_normalise(fit_features)
+            val_features_n = wf_normalise(val_features)
+
+            fit_ds = MultiAssetWindowDataset(fit_features_n, seq_len, feature_cols,
                                              calendar, verbose=False)
-            v_ds = MultiAssetWindowDataset(val_features, seq_len, feature_cols,
+            v_ds = MultiAssetWindowDataset(val_features_n, seq_len, feature_cols,
                                            calendar, verbose=False)
             if len(fit_ds) == 0 or len(v_ds) == 0:
                 raise RuntimeError("Walk-forward window produced no windows")
-            m = build_model(args.model, config, feature_cols)
-            fit_regime_thresholds(m, fit_ds, feature_cols)
-            return train_variant(args.model, config, fit_ds, v_ds, feature_cols,
-                                 None, verbose=False)
+            m = train_variant(args.model, config, fit_ds, v_ds, feature_cols,
+                              None, verbose=False)
+            setattr(m, "_walk_forward_normalizer", wf_normalizer)
+            return m
 
         def predict_fn(m, test_features):
+            wf_normalizer = getattr(m, "_walk_forward_normalizer", None)
+            if wf_normalizer is not None:
+                test_features = test_features.copy()
+                test_features[feature_cols] = wf_normalizer.transform(
+                    test_features[feature_cols]
+                )
             ds = MultiAssetWindowDataset(test_features, seq_len, feature_cols,
                                          calendar, verbose=False)
             if len(ds) == 0:
@@ -743,7 +857,8 @@ def main(argv=None) -> int:
 
     # 9. Report 
     report = build_report(backtest, predictions, returns_df, prices, market,
-                          test_calendar, symbols, config, ppy, args.n_trials)
+                          test_calendar, symbols, config, ppy, args.n_trials,
+                          feature_config.max_lookback)
 
     detector = StatisticalRegimeDetector().fit(
         returns_df["tradeable_return"].to_numpy()

@@ -129,7 +129,7 @@ class WalkForwardAnalyzer:
                 continue
 
             test_calendar = calendar[
-                (calendar >= plan["test_strat"]) & (calendar <= plan["test_end"])
+                (calendar >= plan["test_start"]) & (calendar <= plan["test_end"])
             ]
             backtest = run_portfolio_backtest(
                 predictions, tradeable_returns, test_calendar, self.backtest_config
@@ -151,7 +151,7 @@ class WalkForwardAnalyzer:
             results.append(window)
 
             if verbose:
-                print(f" Sharpe {window.metrics['sharpe_ratio']:.6.3f} | "
+                print(f" Sharpe {window.metrics['sharpe_ratio']:6.3f} | "
                       f"return {window.metrics['total_return']:7.2%} | "
                       f"turnover {backtest['mean_turnover']:.3f}")
                 
@@ -219,7 +219,7 @@ def print_walk_forward_results(results: Dict) -> None:
     print(f"Windows: {results['n_windows']}")
     print(f"Positive windows: {dist['positive_windows']}/{results['n_windows']}")
     print("\n Pooled out-of-sample (the headline):")
-    print(f" Sharpe (per-bar ann.) {pooled['sharpe_ratio']:.8.3f}")
+    print(f" Sharpe (per-bar ann.) {pooled['sharpe_ratio']:8.3f}")
     if "daily_sharpe" in pooled:
         print(f" Sharpe (daily agg.) {pooled['daily_sharpe']:8.3f}")
     print(f" Total return {pooled['total_return']:8.2%}")
