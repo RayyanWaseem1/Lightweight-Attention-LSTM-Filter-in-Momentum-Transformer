@@ -2,7 +2,6 @@
 numpy>=1.24.0
 pandas>=2.0.0
 scipy>=1.10.0
-scikit-learn>=1.3.0
 
 # Deep learning
 torch>=2.0.0
@@ -10,15 +9,6 @@ torch>=2.0.0
 # Plotting/reporting used by backtest scripts
 matplotlib>=3.7.0
 seaborn>=0.12.0
-
-# Live-trading/scheduling scripts under outputs/
-alpaca-py>=0.20.0
-schedule>=1.2.0
-
-# Hyperparameter tuning script under outputs/
-ray[tune]>=2.9.0
-hyperopt>=0.2.7
-bayesian-optimization>=1.4.0
 
 # Test suite
 pytest>=7.0.0

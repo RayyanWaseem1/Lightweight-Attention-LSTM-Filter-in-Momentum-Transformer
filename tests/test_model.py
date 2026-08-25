@@ -339,8 +339,7 @@ def test_weight_network_normalises_its_input():
 
 
 def test_weight_network_rejects_wrong_feature_count():
-    """configTuned.py declared regime_feature_dim=10 against a 21-feature
-    extractor and could not run; this now fails loudly."""
+    """The weight network should fail loudly on stale feature dimensions."""
     net = DynamicWeightNetwork(regime_feature_dim=10, hidden_dim=8)
     with pytest.raises(ValueError, match="regime features"):
         net(torch.randn(2, 21))

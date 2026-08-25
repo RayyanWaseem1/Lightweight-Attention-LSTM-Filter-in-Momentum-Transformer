@@ -272,10 +272,9 @@ def get_enhanced_config() -> Config:
 def get_production_config() -> Config: 
     """ Ensemble configuration 
     
-    Hyperparameters here are defaults only. The resolved configuration for a 
-    run is loaded from the tuning output via
-    ``outputs.Hyperparameter_tuning.load_best_config`` and logged alongside the 
-    results, so any result can be traced to the parameters that produced it
+    Hyperparameters here are defaults only. Every run writes the resolved
+    configuration alongside the results, so any result can be traced to the
+    parameters that produced it.
     """
     config = Config()
     config.selection_strategy = "ensemble"

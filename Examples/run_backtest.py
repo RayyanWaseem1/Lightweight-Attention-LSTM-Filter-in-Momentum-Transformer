@@ -1,9 +1,7 @@
-""" Single backtest harness for all three model variants
+"""Single backtest harness for all three model variants.
 
-Replaces ``Backtest_complete.py``, ``Backtest_attention.py`` and 
-``Backtest_vanilla.py``, which differed by only 269 of ~1,650 lines --
-roughly 4,900 lines of duplicated logic in which every fix had to be made
-three times, and which had already drifted apart
+This is the canonical end-to-end entry point for vanilla, attention, and
+ensemble runs.
 
 Usage:
     python Examples/run_backtest.py --model ensemble
