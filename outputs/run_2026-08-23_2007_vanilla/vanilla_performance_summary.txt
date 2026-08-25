@@ -1,0 +1,84 @@
+==============================================================================
+MOMENTUM TRANSFORMER BACKTEST -- model: vanilla
+==============================================================================
+
+HEADLINE (net of costs)
+------------------------------------------------------------------------------
+  Sharpe (daily aggregation, sqrt(252)) :    0.328   <-- headline
+  Sharpe (per-bar annualised)           :    0.340
+  Sortino                               :    0.482
+  Calmar                                :    0.185
+  CAGR                                  :    4.34%
+  Volatility                            :   16.45%
+  Max drawdown                          :  -23.46%
+  Total return                          :   17.31%
+  Win rate                              :   51.33%
+  Periods / days                        : 6,594 / 942
+  Bars per year used                    : 1753
+  Test period                           : 2022-02-28 13:00:00 -> 2025-11-26 19:00:00
+  Symbols / burn-in bars                : 53 / 882
+
+EXPOSURE
+------------------------------------------------------------------------------
+  Gross exposure mean/median/p95/max    :  1.000 /  1.000 /  1.000 /  1.000
+  Net exposure mean/median/p95abs/maxabs:  0.998 /  1.000 /  1.000 /  1.000
+  Position count mean/max               :  10.00 / 10
+
+TRADING ACTIVITY
+------------------------------------------------------------------------------
+  Rebalance frequency                   : weekly
+  Rebalances                            : 205
+  Mean turnover per bar                 :   0.0319
+  Total turnover                        :   210.28
+  Cost rate (one-way)                   :  0.00060
+  Total cost drag                       :   0.1262
+  Gross total return                    :   33.09%
+
+COST SCENARIOS
+------------------------------------------------------------------------------
+   5bps one-way  Sharpe   0.374 | return   19.81% | total cost  0.1051
+  10bps one-way  Sharpe   0.204 | return    7.85% | total cost  0.2103
+  20bps one-way  Sharpe  -0.135 | return  -12.63% | total cost  0.4206
+
+BASELINES
+------------------------------------------------------------------------------
+  strategy       Sharpe   0.340 | return   17.31% | DD -23.46%
+  spy            Sharpe   0.783 | return   57.54% | DD -23.81%
+  equal_weight   Sharpe   0.769 | return   82.42% | DD -35.30%
+  tsmom          Sharpe  -0.063 | return  -48.01% | DD -75.16%
+
+  Regression vs SPY:
+    Alpha (annualised) :   -4.73%  (t = -0.93)
+    Beta               :    0.760
+    Correlation        :    0.801
+
+VOL-MATCHED TO SPY VOL (17.36%)
+------------------------------------------------------------------------------
+  strategy       Sharpe   0.340 | CAGR    4.50% | DD -24.60%
+  spy            Sharpe   0.783 | CAGR   12.85% | DD -23.81%
+  equal_weight   Sharpe   0.769 | CAGR   12.57% | DD -25.73%
+  tsmom          Sharpe  -0.063 | CAGR   -2.57% | DD -32.12%
+
+PREDICTIVE POWER (raw predictions, no rescaling)
+------------------------------------------------------------------------------
+  Observations                          : 299,255
+  Pooled IC                             :   0.0023
+  Mean cross-sectional IC               :   0.0016
+    t-stat / p-value                    :     0.56 / 0.5739
+    timestamps                          : 6,614
+  Block-bootstrap IC 95% CI             : [-0.0014, 0.0065]
+  Directional accuracy                  :   46.79%
+  Demeaned directional accuracy         :   51.18%
+  Prediction mean / median              :   0.27713 /   0.23467
+  Target mean / median                  :   0.00010 /   0.00000
+
+  Nominal p-value assumes i.i.d observations. These are overlapping windows across correlated names, so it is badly optimistic. Use the cross-sectional t-stat and the bootstrap CI
+
+MULTIPLE-TESTING ADJUSTMENT
+------------------------------------------------------------------------------
+  Configurations counted                : 93
+  Expected max Sharpe under null        :    1.291
+  Sharpe standard error                 :    0.515
+  Deflated Sharpe (P[true SR > 0])      :   0.0325
+
+==============================================================================

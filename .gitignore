@@ -9,4 +9,12 @@ venv/
 
 .pytest_cache/
 
-outputs/run_*/
+# Generated backtest run folders can be large. Keep heavy artifacts ignored,
+# but allow compact summary/report files to be committed.
+outputs/run_*/*
+!outputs/run_*/
+!outputs/run_*/*summary*.txt
+!outputs/run_*/*report*.json
+!outputs/run_*/run_config.json
+!outputs/run_*/walk_forward.json
+!outputs/run_*/salvaged_walk_forward.json

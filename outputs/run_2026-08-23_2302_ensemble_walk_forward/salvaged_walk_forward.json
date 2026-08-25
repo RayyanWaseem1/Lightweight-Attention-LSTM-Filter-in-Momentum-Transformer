@@ -1,0 +1,303 @@
+{
+  "model": "ensemble",
+  "source": {
+    "type": "terminal_output",
+    "path": "/Users/rayyanwaseem/.codex/attachments/862e70df-caa3-4eb0-a505-9ddf3c322f7b/pasted-text.txt",
+    "note": "The walk-forward run completed all 22 windows but crashed while printing the final pooled summary. Window-level metrics were salvaged from terminal output."
+  },
+  "run_context": {
+    "command": "python Examples/run_backtest.py --model ensemble --walk-forward",
+    "printed_output_dir": "/Users/rayyanwaseem/Desktop/Lightweight-Attention-LSTM-Filter-in-Momentum-Transformer/outputs/run_2026-08-23_2302_ensemble",
+    "salvage_file_dir": "/Users/rayyanwaseem/Desktop/Lightweight-Attention-LSTM-Filter-in-Momentum-Transformer/outputs/run_2026-08-23_2302_ensemble_walk_forward",
+    "calendar_bars": 13278,
+    "sessions": 1906,
+    "bars_per_session": 6.97,
+    "empirical_bars_per_year": 1753,
+    "configured_periods_per_year": 1764,
+    "symbols_final": 53,
+    "feature_rows": 574383,
+    "feature_count": 54,
+    "train_rows": 142573,
+    "validation_rows": 77313,
+    "test_rows": 354497,
+    "train_windows": 114694,
+    "validation_windows": 60582,
+    "test_windows": 299255,
+    "non_contiguous_rejections": {
+      "train": 17086,
+      "validation": 5524,
+      "test": 41939
+    }
+  },
+  "walk_forward_plan": {
+    "n_windows": 22,
+    "train_bars": 3528,
+    "test_bars": 441,
+    "step_bars": 441,
+    "approx_train_years": 2.0,
+    "approx_test_quarters": 1.0,
+    "first_oos_date": "2020-05-14",
+    "last_oos_date": "2025-11-18"
+  },
+  "window_results": [
+    {
+      "index": 1,
+      "train_start": "2018-05-01",
+      "train_end": "2020-05-13",
+      "test_start": "2020-05-14",
+      "test_end": "2020-08-12",
+      "sharpe": 0.4,
+      "total_return": 0.0048,
+      "turnover": 0.047
+    },
+    {
+      "index": 2,
+      "train_start": "2018-07-31",
+      "train_end": "2020-08-12",
+      "test_start": "2020-08-13",
+      "test_end": "2020-11-10",
+      "sharpe": 6.101,
+      "total_return": 0.1508,
+      "turnover": 0.031
+    },
+    {
+      "index": 3,
+      "train_start": "2018-10-29",
+      "train_end": "2020-11-10",
+      "test_start": "2020-11-11",
+      "test_end": "2021-02-12",
+      "sharpe": -3.176,
+      "total_return": -0.0482,
+      "turnover": 0.043
+    },
+    {
+      "index": 4,
+      "train_start": "2019-02-08",
+      "train_end": "2021-02-12",
+      "test_start": "2021-02-12",
+      "test_end": "2021-05-14",
+      "sharpe": -4.023,
+      "total_return": -0.052,
+      "turnover": 0.039
+    },
+    {
+      "index": 5,
+      "train_start": "2019-05-13",
+      "train_end": "2021-05-14",
+      "test_start": "2021-05-14",
+      "test_end": "2021-08-13",
+      "sharpe": 3.901,
+      "total_return": 0.0525,
+      "turnover": 0.051
+    },
+    {
+      "index": 6,
+      "train_start": "2019-08-12",
+      "train_end": "2021-08-13",
+      "test_start": "2021-08-13",
+      "test_end": "2021-11-11",
+      "sharpe": 4.354,
+      "total_return": 0.0577,
+      "turnover": 0.037
+    },
+    {
+      "index": 7,
+      "train_start": "2019-11-08",
+      "train_end": "2021-11-11",
+      "test_start": "2021-11-11",
+      "test_end": "2022-02-11",
+      "sharpe": -2.528,
+      "total_return": -0.0682,
+      "turnover": 0.042
+    },
+    {
+      "index": 8,
+      "train_start": "2020-02-13",
+      "train_end": "2022-02-11",
+      "test_start": "2022-02-11",
+      "test_end": "2022-05-13",
+      "sharpe": -0.513,
+      "total_return": -0.017,
+      "turnover": 0.044
+    },
+    {
+      "index": 9,
+      "train_start": "2020-05-14",
+      "train_end": "2022-05-13",
+      "test_start": "2022-05-13",
+      "test_end": "2022-08-15",
+      "sharpe": -2.759,
+      "total_return": -0.0593,
+      "turnover": 0.05
+    },
+    {
+      "index": 10,
+      "train_start": "2020-08-13",
+      "train_end": "2022-08-15",
+      "test_start": "2022-08-15",
+      "test_end": "2022-11-11",
+      "sharpe": 0.621,
+      "total_return": 0.0116,
+      "turnover": 0.04
+    },
+    {
+      "index": 11,
+      "train_start": "2020-11-11",
+      "train_end": "2022-11-11",
+      "test_start": "2022-11-11",
+      "test_end": "2023-02-14",
+      "sharpe": 2.654,
+      "total_return": 0.033,
+      "turnover": 0.054
+    },
+    {
+      "index": 12,
+      "train_start": "2021-02-12",
+      "train_end": "2023-02-14",
+      "test_start": "2023-02-14",
+      "test_end": "2023-05-16",
+      "sharpe": 1.291,
+      "total_return": 0.0197,
+      "turnover": 0.052
+    },
+    {
+      "index": 13,
+      "train_start": "2021-05-14",
+      "train_end": "2023-05-16",
+      "test_start": "2023-05-16",
+      "test_end": "2023-08-16",
+      "sharpe": -4.955,
+      "total_return": -0.0842,
+      "turnover": 0.05
+    },
+    {
+      "index": 14,
+      "train_start": "2021-08-13",
+      "train_end": "2023-08-16",
+      "test_start": "2023-08-16",
+      "test_end": "2023-11-14",
+      "sharpe": 4.96,
+      "total_return": 0.0957,
+      "turnover": 0.053
+    },
+    {
+      "index": 15,
+      "train_start": "2021-11-11",
+      "train_end": "2023-11-14",
+      "test_start": "2023-11-14",
+      "test_end": "2024-02-15",
+      "sharpe": 5.168,
+      "total_return": 0.051,
+      "turnover": 0.044
+    },
+    {
+      "index": 16,
+      "train_start": "2022-02-11",
+      "train_end": "2024-02-15",
+      "test_start": "2024-02-15",
+      "test_end": "2024-05-16",
+      "sharpe": -0.328,
+      "total_return": -0.0047,
+      "turnover": 0.044
+    },
+    {
+      "index": 17,
+      "train_start": "2022-05-13",
+      "train_end": "2024-05-16",
+      "test_start": "2024-05-16",
+      "test_end": "2024-08-16",
+      "sharpe": -1.989,
+      "total_return": -0.0302,
+      "turnover": 0.041
+    },
+    {
+      "index": 18,
+      "train_start": "2022-08-15",
+      "train_end": "2024-08-16",
+      "test_start": "2024-08-16",
+      "test_end": "2024-11-14",
+      "sharpe": 2.286,
+      "total_return": 0.0316,
+      "turnover": 0.044
+    },
+    {
+      "index": 19,
+      "train_start": "2022-11-11",
+      "train_end": "2024-11-14",
+      "test_start": "2024-11-14",
+      "test_end": "2025-02-19",
+      "sharpe": 1.007,
+      "total_return": 0.0112,
+      "turnover": 0.051
+    },
+    {
+      "index": 20,
+      "train_start": "2023-02-14",
+      "train_end": "2025-02-19",
+      "test_start": "2025-02-19",
+      "test_end": "2025-05-20",
+      "sharpe": 3.133,
+      "total_return": 0.0583,
+      "turnover": 0.033
+    },
+    {
+      "index": 21,
+      "train_start": "2023-05-16",
+      "train_end": "2025-05-20",
+      "test_start": "2025-05-20",
+      "test_end": "2025-08-20",
+      "sharpe": -0.969,
+      "total_return": -0.0159,
+      "turnover": 0.047
+    },
+    {
+      "index": 22,
+      "train_start": "2023-08-16",
+      "train_end": "2025-08-20",
+      "test_start": "2025-08-20",
+      "test_end": "2025-11-18",
+      "sharpe": -2.626,
+      "total_return": -0.0346,
+      "turnover": 0.047
+    }
+  ],
+  "window_summary_from_printed_values": {
+    "computed_from_rounded_terminal_values": true,
+    "n_windows": 22,
+    "positive_sharpe_windows": 12,
+    "positive_sharpe_fraction": 0.5454545454545454,
+    "mean_sharpe": 0.5459090909090908,
+    "median_sharpe": 0.5105,
+    "std_sharpe": 3.225275564588624,
+    "min_sharpe": -4.955,
+    "max_sharpe": 6.101,
+    "sharpe_ci_low_95_normal_approx": -0.8018477882874088,
+    "sharpe_ci_high_95_normal_approx": 1.8936659701055905,
+    "mean_window_return": 0.007436363636363633,
+    "median_window_return": 0.008,
+    "std_window_return": 0.057106571596275316,
+    "min_window_return": -0.0842,
+    "max_window_return": 0.1508,
+    "sum_window_returns": 0.16359999999999994,
+    "approx_chained_total_return": 0.13857586414560985,
+    "mean_turnover": 0.044727272727272734,
+    "median_turnover": 0.044,
+    "std_turnover": 0.006265413893384159,
+    "min_turnover": 0.031,
+    "max_turnover": 0.054
+  },
+  "missing_due_to_crash": [
+    "exact pooled out-of-sample return series",
+    "exact pooled Sharpe",
+    "exact pooled daily Sharpe",
+    "exact pooled max drawdown",
+    "exact pooled Calmar",
+    "exact pooled CAGR",
+    "exact pooled total return",
+    "walk_forward.json"
+  ],
+  "recommended_usage": {
+    "comparison_role": "Use as a walk-forward robustness check, not as an exact replacement for the missing pooled walk-forward artifacts.",
+    "suggested_sentence": "A 22-window walk-forward run completed all window-level tests before crashing during final summary printing. The salvaged window-level results show 12/22 positive-Sharpe windows, mean window Sharpe 0.55, median 0.51, and a wide 95% CI on mean Sharpe of roughly [-0.80, 1.89], so the walk-forward evidence is mixed and should be treated as a robustness check rather than the primary headline."
+  }
+}
